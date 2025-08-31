@@ -3,13 +3,21 @@
 
 .basket {
   @include mixins.flex(column);
-  gap: 2rem;
+  gap: 3rem;
   height: 100%;
 
   &__list {
     padding: 0;
     margin: 0;
     flex-grow: 1;
+  }
+
+  &__empty {
+    @include mixins.flex(row);
+    justify-content: flex-start;
+    color: $primaryLight;
+    font-size: 1.5rem;
+    text-align: left;
   }
 
   &__item {

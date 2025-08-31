@@ -16,6 +16,11 @@ export class BasketModel {
     }
 
     addProduct(product: IProduct): void {
+        // Не добавляем товары с ценой null
+        if (product.price === null) {
+            return;
+        }
+
         const existingItem = this.items.find(item => item.product.id === product.id);
         
         if (existingItem) {
@@ -38,7 +43,12 @@ export class BasketModel {
     }
 
     getTotal(): number {
-        return this.items.reduce((total, item) => total + (item.product.price * item.quantity), 0);
+        return this.items.reduce((total, item) => {
+            if (item.product.price !== null) {
+                return total + (item.product.price * item.quantity);
+            }
+            return total;
+        }, 0);
     }
 
     getItems(): IBasketItem[] {
@@ -59,5 +69,9 @@ export class BasketModel {
 
     isEmpty(): boolean {
         return this.items.length === 0;
+    }
+
+    isProductInBasket(productId: string): boolean {
+        return this.items.some(item => item.product.id === productId);
     }
 }

@@ -56,6 +56,11 @@ export class App {
         this.events.on(AppEvents.ORDER_CREATED, (order: IOrder) => {
             this.createOrder(order);
         });
+
+        // Очистка корзины
+        this.events.on('basket:clear', () => {
+            this.basket.clear();
+        });
     }
 
     private updateBasketUI(data: { count: number, total: number }): void {

@@ -17,4 +17,12 @@
     @include mixins.button(white, $primaryLight, $primaryLight);
     border: $hoverBorder;
   }
+
+  &_remove {
+    @include mixins.button($primary, white, $hover);
+    border: $defaultBorder;
+    &:hover {
+      background: $hover;
+    }
+  }
 }
