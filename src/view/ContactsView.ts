@@ -1,7 +1,8 @@
-import { ensureElement } from '../../utils/utils';
-import { IOrderForm, FormErrors } from '../../types';
+import { ensureElement } from '../utils/utils';
+import { IOrderForm, FormErrors } from '../types';
+import { IEvents } from '../components/base/events';
 
-export class ContactsForm {
+export class ContactsFormView {
     protected _container: HTMLElement;
     protected _emailInput: HTMLInputElement;
     protected _phoneInput: HTMLInputElement;
@@ -12,10 +13,9 @@ export class ContactsForm {
     protected _formData: Partial<IOrderForm> = {};
     protected _errors: FormErrors = {};
 
-    constructor(container: HTMLElement, private events?: any) {
+    constructor(container: HTMLElement, private events: IEvents) {
         this._container = container;
         
-        // Проверяем, является ли контейнер формой, иначе ищем форму внутри
         if (container.tagName === 'FORM') {
             this._form = container as HTMLFormElement;
         } else {
@@ -31,17 +31,14 @@ export class ContactsForm {
     }
 
     private setupEventListeners(): void {
-        // Обработчик ввода email
         this._emailInput.addEventListener('input', () => {
             this.setEmail(this._emailInput.value);
         });
 
-        // Обработчик ввода телефона
         this._phoneInput.addEventListener('input', () => {
             this.setPhone(this._phoneInput.value);
         });
 
-        // Обработчик отправки формы
         this._form.addEventListener('submit', (event) => {
             event.preventDefault();
             this.submit();
@@ -61,14 +58,12 @@ export class ContactsForm {
     private validateForm(): void {
         this._errors = {};
 
-        // Проверка email
         if (!this._formData.email || this._formData.email.trim() === '') {
             this._errors.email = 'Необходимо указать email';
         } else if (!this.isValidEmail(this._formData.email)) {
             this._errors.email = 'Некорректный формат email';
         }
 
-        // Проверка телефона
         if (!this._formData.phone || this._formData.phone.trim() === '') {
             this._errors.phone = 'Необходимо указать номер телефона';
         }
@@ -96,7 +91,7 @@ export class ContactsForm {
         this.validateForm();
         
         if (Object.keys(this._errors).length === 0) {
-            this.events?.emit('contacts:submit', this._formData);
+            this.events.emit('contacts:submit', this._formData);
         }
     }
 

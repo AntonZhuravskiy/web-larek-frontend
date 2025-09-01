@@ -14,9 +14,25 @@ export function ensureElement<T extends HTMLElement>(selector: string, context?:
 }
 
 export function cloneTemplate<T extends HTMLElement>(templateId: string): T {
+    console.log(`Cloning template: ${templateId}`);
     const template = document.getElementById(templateId) as HTMLTemplateElement;
     if (!template) {
+        console.error(`Template ${templateId} not found in DOM`);
+        console.log('Available templates:', Array.from(document.querySelectorAll('template')).map(t => t.id));
         throw new Error(`Template ${templateId} not found`);
     }
-    return template.content.firstElementChild?.cloneNode(true) as T;
+    
+    // Используем cloneNode(true) для глубокого клонирования всего содержимого
+    const cloned = template.content.cloneNode(true) as DocumentFragment;
+    const element = cloned.firstElementChild as T;
+    
+    if (!element) {
+        console.error(`Template ${templateId} has no content or firstElementChild`);
+        throw new Error(`Template ${templateId} content is empty`);
+    }
+    
+    console.log(`Successfully cloned template ${templateId}:`, element);
+    console.log(`Element classes: ${element.className}`);
+    console.log(`Element tag: ${element.tagName}`);
+    return element;
 }

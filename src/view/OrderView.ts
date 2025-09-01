@@ -1,7 +1,8 @@
-import { ensureElement } from '../../utils/utils';
-import { IOrderForm, FormErrors } from '../../types';
+import { ensureElement } from '../utils/utils';
+import { IOrderForm, FormErrors } from '../types';
+import { IEvents } from '../components/base/events';
 
-export class OrderForm {
+export class OrderFormView {
 	protected _container: HTMLElement;
 	protected _paymentButtons: HTMLButtonElement[];
 	protected _addressInput: HTMLInputElement;
@@ -12,10 +13,9 @@ export class OrderForm {
 	protected _formData: Partial<IOrderForm> = {};
 	protected _errors: FormErrors = {};
 
-	constructor(container: HTMLElement, private events?: any) {
+	constructor(container: HTMLElement, private events: IEvents) {
 		this._container = container;
 
-		// Проверяем, является ли контейнер формой, иначе ищем форму внутри
 		if (container.tagName === 'FORM') {
 			this._form = container as HTMLFormElement;
 		} else {
@@ -35,7 +35,6 @@ export class OrderForm {
 			container
 		);
 
-		// Получаем кнопки способа оплаты
 		this._paymentButtons = Array.from(
 			container.querySelectorAll('.order__buttons .button')
 		) as HTMLButtonElement[];
@@ -44,7 +43,6 @@ export class OrderForm {
 	}
 
 	private setupEventListeners(): void {
-		// Обработчики кнопок оплаты
 		this._paymentButtons.forEach((button) => {
 			button.addEventListener('click', (event) => {
 				event.preventDefault();
@@ -54,12 +52,10 @@ export class OrderForm {
 			});
 		});
 
-		// Обработчик ввода адреса
 		this._addressInput.addEventListener('input', () => {
 			this.setAddress(this._addressInput.value);
 		});
 
-		// Обработчик отправки формы
 		this._form.addEventListener('submit', (event) => {
 			event.preventDefault();
 			this.submit();
@@ -69,7 +65,6 @@ export class OrderForm {
 	private setPaymentMethod(payment: 'online' | 'cash'): void {
 		this._formData.payment = payment;
 
-		// Обновляем визуальное состояние кнопок
 		this._paymentButtons.forEach((button) => {
 			const buttonName = button.getAttribute('name');
 			const isActive =
@@ -89,12 +84,10 @@ export class OrderForm {
 	private validateForm(): void {
 		this._errors = {};
 
-		// Проверка способа оплаты
 		if (!this._formData.payment) {
 			this._errors.payment = 'Необходимо выбрать способ оплаты';
 		}
 
-		// Проверка адреса
 		if (!this._formData.address || this._formData.address.trim() === '') {
 			this._errors.address = 'Необходимо указать адрес';
 		}
@@ -117,7 +110,7 @@ export class OrderForm {
 		this.validateForm();
 
 		if (Object.keys(this._errors).length === 0) {
-			this.events?.emit('order:submit', this._formData);
+			this.events.emit('order:submit', this._formData);
 		}
 	}
 

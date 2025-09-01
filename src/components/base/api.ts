@@ -15,15 +15,34 @@ export class Api {
     }
 
     protected handleResponse<T>(response: Response): Promise<T> {
-        if (response.ok) return response.json();
-        else return response.json()
-            .then(data => Promise.reject(data.error ?? response.statusText));
+        if (response.ok) {
+            // Обработка пустых ответов (204 No Content)
+            if (response.status === 204) {
+                return Promise.resolve({} as T);
+            }
+            
+            // Обработка 304 Not Modified - возвращаем пустой объект или массив
+            if (response.status === 304) {
+                console.warn('API returned 304 Not Modified, using empty response');
+                return Promise.resolve([] as unknown as T);
+            }
+            
+            return response.json();
+        } else {
+            return response.json()
+                .then(data => Promise.reject(data.error ?? response.statusText));
+        }
     }
 
     get<T>(uri: string): Promise<T> {
         return fetch(this.baseUrl + uri, {
             ...this.options,
-            method: 'GET'
+            method: 'GET',
+            headers: {
+                ...this.options.headers,
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            }
         }).then((response) => this.handleResponse<T>(response));
     }
 

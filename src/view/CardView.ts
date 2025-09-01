@@ -1,8 +1,8 @@
-import { ensureElement } from '../../utils/utils';
-import { IProduct, ICardActions } from '../../types';
-import { CDN_URL } from '../../utils/constants';
+import { ensureElement } from '../utils/utils';
+import { IProduct, ICardActions } from '../types';
+import { CDN_URL } from '../utils/constants';
 
-export class Card {
+export class CardView {
 	protected _container: HTMLElement;
 	protected _title: HTMLElement;
 	protected _price: HTMLElement;
@@ -101,12 +101,19 @@ export class Card {
 	}
 
 	render(data: Partial<IProduct>): HTMLElement {
-		Object.assign(this, data);
-		return this._container;
+		console.log('CardView.render called with data:', data);
+		try {
+			Object.assign(this, data);
+			console.log('CardView.render completed, container:', this._container);
+			return this._container;
+		} catch (error) {
+			console.error('Error in CardView.render:', error);
+			throw error;
+		}
 	}
 }
 
-export class CardPreview extends Card {
+export class CardPreviewView extends CardView {
 	protected _description: HTMLElement;
 
 	constructor(container: HTMLElement, actions?: ICardActions) {

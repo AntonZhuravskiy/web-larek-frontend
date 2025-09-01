@@ -1,7 +1,6 @@
-import { IBasketItem, IProduct } from '../../types';
-import { EventEmitter } from './events';
+import { IBasketItem, IProduct } from '../types';
 
-interface BasketState {
+export interface BasketState {
     items: IBasketItem[];
     total: number;
     count: number;
@@ -9,14 +8,8 @@ interface BasketState {
 
 export class BasketModel {
     private items: IBasketItem[] = [];
-    private events: EventEmitter;
-
-    constructor(events: EventEmitter) {
-        this.events = events;
-    }
 
     addProduct(product: IProduct): void {
-        // Не добавляем товары с ценой null
         if (product.price === null) {
             return;
         }
@@ -28,18 +21,17 @@ export class BasketModel {
         } else {
             this.items.push({ product, quantity: 1 });
         }
-        
-        this.events.emit('basket:updated', this.getState());
     }
 
     removeProduct(productId: string): void {
+        console.log('BasketModel.removeProduct called for:', productId);
+        console.log('Items before removal:', this.items.map(item => item.product.id));
         this.items = this.items.filter(item => item.product.id !== productId);
-        this.events.emit('basket:updated', this.getState());
+        console.log('Items after removal:', this.items.map(item => item.product.id));
     }
 
     clear(): void {
         this.items = [];
-        this.events.emit('basket:updated', this.getState());
     }
 
     getTotal(): number {
@@ -52,7 +44,7 @@ export class BasketModel {
     }
 
     getItems(): IBasketItem[] {
-        return this.items;
+        return [...this.items];
     }
 
     getCount(): number {
@@ -61,7 +53,7 @@ export class BasketModel {
 
     getState(): BasketState {
         return {
-            items: this.items,
+            items: this.getItems(),
             total: this.getTotal(),
             count: this.getCount()
         };

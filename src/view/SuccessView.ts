@@ -1,11 +1,12 @@
-import { ensureElement } from '../../utils/utils';
+import { ensureElement } from '../utils/utils';
+import { IEvents } from '../components/base/events';
 
-export class Success {
+export class SuccessView {
     protected _container: HTMLElement;
     protected _description: HTMLElement;
     protected _closeButton: HTMLButtonElement;
 
-    constructor(container: HTMLElement, private events?: any) {
+    constructor(container: HTMLElement, private events: IEvents) {
         this._container = container;
         this._description = ensureElement<HTMLElement>('.order-success__description', container);
         this._closeButton = ensureElement<HTMLButtonElement>('.order-success__close', container);
@@ -15,7 +16,7 @@ export class Success {
 
     private setupEventListeners(): void {
         this._closeButton.addEventListener('click', () => {
-            this.events?.emit('success:close');
+            this.events.emit('success:close');
         });
     }
 

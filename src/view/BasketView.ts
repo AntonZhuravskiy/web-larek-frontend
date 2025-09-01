@@ -1,23 +1,22 @@
-import { ensureElement, cloneTemplate } from '../../utils/utils';
-import { IBasketItem, IProduct } from '../../types';
+import { ensureElement, cloneTemplate } from '../utils/utils';
+import { IBasketItem } from '../types';
+import { IEvents } from '../components/base/events';
 
-export class Basket {
+export class BasketView {
     protected _container: HTMLElement;
     protected _list: HTMLElement;
     protected _total: HTMLElement;
     protected _button: HTMLButtonElement;
 
-    constructor(container: HTMLElement, private events?: any) {
+    constructor(container: HTMLElement, private events: IEvents) {
         this._container = container;
         this._list = ensureElement<HTMLElement>('.basket__list', container);
         this._total = ensureElement<HTMLElement>('.basket__price', container);
         this._button = ensureElement<HTMLButtonElement>('.basket__button', container);
 
-        if (this.events) {
-            this._button.addEventListener('click', () => {
-                this.events.emit('order:open');
-            });
-        }
+        this._button.addEventListener('click', () => {
+            this.events.emit('order:open');
+        });
     }
 
     set items(items: IBasketItem[]) {
@@ -31,9 +30,10 @@ export class Basket {
         } else {
             items.forEach((item, index) => {
                 const basketItemElement = cloneTemplate<HTMLElement>('card-basket');
-                const basketItem = new BasketItem(basketItemElement, {
+                const basketItem = new BasketItemView(basketItemElement, {
                     onClick: () => {
-                        this.events?.emit('basket:remove', item.product.id);
+                        console.log('Delete button clicked for product:', item.product.id);
+                        this.events.emit('basket:remove', { productId: item.product.id });
                     }
                 });
                 
@@ -60,7 +60,7 @@ export class Basket {
     }
 }
 
-export class BasketItem {
+export class BasketItemView {
     protected _container: HTMLElement;
     protected _index: HTMLElement;
     protected _title: HTMLElement;
@@ -74,8 +74,15 @@ export class BasketItem {
         this._price = ensureElement<HTMLElement>('.card__price', container);
         this._button = ensureElement<HTMLButtonElement>('.basket__item-delete', container);
 
+        console.log('BasketItemView created, button found:', this._button);
         if (actions?.onClick) {
-            this._button.addEventListener('click', actions.onClick);
+            console.log('Adding click handler to delete button');
+            this._button.addEventListener('click', (event) => {
+                console.log('Delete button clicked, calling action');
+                event.preventDefault();
+                event.stopPropagation();
+                actions.onClick();
+            });
         }
     }
 
