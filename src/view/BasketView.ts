@@ -19,48 +19,119 @@ export class BasketView {
         });
     }
 
-    set items(items: IBasketItem[]) {
+    // Основной метод обновления корзины
+    update(data: { items: HTMLElement[], total: number }): void {
+        // Очищаем список
         this._list.innerHTML = '';
         
-        if (items.length === 0) {
+        if (data.items.length === 0) {
+            // Показываем сообщение о пустой корзине
             const emptyMessage = document.createElement('li');
             emptyMessage.className = 'basket__empty';
             emptyMessage.textContent = 'Корзина пуста';
             this._list.appendChild(emptyMessage);
         } else {
-            items.forEach((item, index) => {
-                const basketItemElement = cloneTemplate<HTMLElement>('card-basket');
-                const basketItem = new BasketItemView(basketItemElement, {
-                    onClick: () => {
-                        console.log('Delete button clicked for product:', item.product.id);
-                        this.events.emit('basket:remove', { productId: item.product.id });
-                    }
-                });
-                
-                basketItem.render(item, index + 1);
-                this._list.appendChild(basketItemElement);
+            // Добавляем все элементы корзины
+            data.items.forEach(item => {
+                this._list.appendChild(item);
             });
         }
 
-        this.updateButton(items.length > 0);
+        // Обновляем общую сумму
+        this._total.textContent = `${data.total} синапсов`;
+        
+        // Блокируем кнопку если корзина пуста
+        this.updateButton(data.items.length > 0);
     }
 
+    // Установка элементов корзины (альтернативный метод)
+    set items(items: IBasketItem[]) {
+        const basketItems = items.map((item, index) => {
+            const basketItemElement = cloneTemplate<HTMLElement>('card-basket');
+            const basketItem = new BasketItemView(basketItemElement, {
+                onClick: () => {
+                    this.events.emit('basket:remove', { productId: item.product.id });
+                }
+            });
+            
+            basketItem.render(item, index + 1);
+            return basketItemElement;
+        });
+
+        this.update({
+            items: basketItems,
+            total: this.calculateTotal(items)
+        });
+    }
+
+    // Установка общей суммы
     set total(value: number) {
         this._total.textContent = `${value} синапсов`;
     }
 
-    private updateButton(hasItems: boolean): void {
+    // Обновление состояния кнопки
+    protected updateButton(hasItems: boolean): void {
         this._button.disabled = !hasItems;
     }
 
+    // Расчет общей суммы
+    protected calculateTotal(items: IBasketItem[]): number {
+        return items.reduce((total, item) => {
+            if (item.product.price !== null) {
+                return total + (item.product.price * item.quantity);
+            }
+            return total;
+        }, 0);
+    }
+
+    // Рендер корзины (совместимость со старым кодом)
     render(data: { items: IBasketItem[], total: number }): HTMLElement {
-        this.items = data.items;
-        this.total = data.total;
+        const basketItems = data.items.map((item, index) => {
+            const basketItemElement = cloneTemplate<HTMLElement>('card-basket');
+            
+            const titleElement = ensureElement<HTMLElement>('.card__title', basketItemElement);
+            const priceElement = ensureElement<HTMLElement>('.card__price', basketItemElement);
+            const indexElement = ensureElement<HTMLElement>('.basket__item-index', basketItemElement);
+            const deleteButton = ensureElement<HTMLButtonElement>('.basket__item-delete', basketItemElement);
+
+            titleElement.textContent = item.product.title;
+            priceElement.textContent = item.product.price !== null ? 
+                `${item.product.price * item.quantity} синапсов` : 'Бесценно';
+            indexElement.textContent = (index + 1).toString();
+
+            deleteButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.events.emit('basket:remove', { productId: item.product.id });
+            });
+
+            return basketItemElement;
+        });
+
+        this.update({
+            items: basketItems,
+            total: data.total
+        });
+
         return this._container;
+    }
+
+    // Геттер для контейнера
+    get container(): HTMLElement {
+        return this._container;
+    }
+
+    // Очистка корзины
+    clear(): void {
+        this.update({
+            items: [],
+            total: 0
+        });
     }
 }
 
-export class BasketItemView {
+// Вспомогательный класс для элемента корзины
+class BasketItemView {
     protected _container: HTMLElement;
     protected _index: HTMLElement;
     protected _title: HTMLElement;
@@ -74,11 +145,8 @@ export class BasketItemView {
         this._price = ensureElement<HTMLElement>('.card__price', container);
         this._button = ensureElement<HTMLButtonElement>('.basket__item-delete', container);
 
-        console.log('BasketItemView created, button found:', this._button);
         if (actions?.onClick) {
-            console.log('Adding click handler to delete button');
             this._button.addEventListener('click', (event) => {
-                console.log('Delete button clicked, calling action');
                 event.preventDefault();
                 event.stopPropagation();
                 actions.onClick();
@@ -101,7 +169,7 @@ export class BasketItemView {
     render(item: IBasketItem, index: number): HTMLElement {
         this.index = index;
         this.title = item.product.title;
-        this.price = item.product.price;
+        this.price = item.product.price !== null ? item.product.price * item.quantity : null;
         return this._container;
     }
 }

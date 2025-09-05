@@ -38,6 +38,21 @@ export class CardView {
 		}
 	}
 
+	// Добавляем метод для установки обработчика клика
+	onClick(handler: () => void): void {
+		if (this._button) {
+			this._button.addEventListener('click', (event: MouseEvent) => {
+				event.preventDefault();
+				handler();
+			});
+		} else {
+			this._container.addEventListener('click', (event: MouseEvent) => {
+				event.preventDefault();
+				handler();
+			});
+		}
+	}
+
 	set title(value: string) {
 		this.setText(this._title, value);
 	}
@@ -101,15 +116,8 @@ export class CardView {
 	}
 
 	render(data: Partial<IProduct>): HTMLElement {
-		console.log('CardView.render called with data:', data);
-		try {
-			Object.assign(this, data);
-			console.log('CardView.render completed, container:', this._container);
-			return this._container;
-		} catch (error) {
-			console.error('Error in CardView.render:', error);
-			throw error;
-		}
+		Object.assign(this, data);
+		return this._container;
 	}
 }
 

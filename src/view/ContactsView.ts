@@ -30,6 +30,11 @@ export class ContactsFormView {
         this.setupEventListeners();
     }
 
+    // Добавляем геттер для container
+    get container(): HTMLElement {
+        return this._container;
+    }
+
     private setupEventListeners(): void {
         this._emailInput.addEventListener('input', () => {
             this.setEmail(this._emailInput.value);
