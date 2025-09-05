@@ -1,5 +1,4 @@
 import { ensureElement } from '../utils/utils';
-import { IOrderForm, FormErrors } from '../types';
 import { IEvents } from '../components/base/events';
 
 export class OrderFormView {
@@ -9,9 +8,6 @@ export class OrderFormView {
     protected _submitButton: HTMLButtonElement;
     protected _errorsElement: HTMLElement;
     protected _form: HTMLFormElement;
-
-    protected _formData: Partial<IOrderForm> = {};
-    protected _errors: FormErrors = {};
 
     constructor(container: HTMLElement, private events: IEvents) {
         this._container = container;
@@ -42,34 +38,46 @@ export class OrderFormView {
         this.setupEventListeners();
     }
 
-    // Добавляем геттер для container
     get container(): HTMLElement {
         return this._container;
     }
 
     private setupEventListeners(): void {
+        // Обработчики для кнопок оплаты
         this._paymentButtons.forEach((button) => {
             button.addEventListener('click', (event) => {
                 event.preventDefault();
                 const buttonName = button.getAttribute('name');
                 const payment = buttonName === 'card' ? 'online' : 'cash';
-                this.setPaymentMethod(payment);
+                
+                // Эмитим событие обновления, а не валидируем здесь
+                this.events.emit('order:update', { 
+                    field: 'payment', 
+                    value: payment 
+                });
+                
+                // Только визуальное обновление
+                this.updatePaymentButtons(payment);
             });
         });
 
+        // Обработчик для поля адреса
         this._addressInput.addEventListener('input', () => {
-            this.setAddress(this._addressInput.value);
+            this.events.emit('order:update', { 
+                field: 'address', 
+                value: this._addressInput.value 
+            });
         });
 
+        // Обработчик отправки формы
         this._form.addEventListener('submit', (event) => {
             event.preventDefault();
-            this.submit();
+            this.events.emit('order:submit');
         });
     }
 
-    private setPaymentMethod(payment: 'online' | 'cash'): void {
-        this._formData.payment = payment;
-
+    // Только визуальное обновление кнопок
+    private updatePaymentButtons(payment: 'online' | 'cash'): void {
         this._paymentButtons.forEach((button) => {
             const buttonName = button.getAttribute('name');
             const isActive =
@@ -77,74 +85,34 @@ export class OrderFormView {
                 (payment === 'cash' && buttonName === 'cash');
             button.classList.toggle('button_alt-active', isActive);
         });
-
-        this.validateForm();
     }
 
-    private setAddress(address: string): void {
-        this._formData.address = address;
-        this.validateForm();
-    }
-
-    private validateForm(): void {
-        this._errors = {};
-
-        if (!this._formData.payment) {
-            this._errors.payment = 'Необходимо выбрать способ оплаты';
-        }
-
-        if (!this._formData.address || this._formData.address.trim() === '') {
-            this._errors.address = 'Необходимо указать адрес';
-        }
-
-        this.updateErrors();
-        this.updateSubmitButton();
-    }
-
-    private updateErrors(): void {
-        const errorMessages = Object.values(this._errors).filter(Boolean);
+    // Обновление ошибок (вызывается извне)
+    updateErrors(errors: Record<string, string>): void {
+        const errorMessages = Object.values(errors).filter(Boolean);
         this._errorsElement.textContent = errorMessages.join('; ');
+        this._submitButton.disabled = errorMessages.length > 0;
     }
 
-    private updateSubmitButton(): void {
-        const hasErrors = Object.keys(this._errors).length > 0;
-        this._submitButton.disabled = hasErrors;
-    }
-
-    private submit(): void {
-        this.validateForm();
-
-        if (Object.keys(this._errors).length === 0) {
-            this.events.emit('order:submit', this._formData);
-        }
-    }
-
-    set payment(value: 'online' | 'cash') {
-        this.setPaymentMethod(value);
-    }
-
-    set address(value: string) {
+    // Установка значений (вызывается извне)
+    setAddress(value: string): void {
         this._addressInput.value = value;
-        this.setAddress(value);
     }
 
-    get formData(): Partial<IOrderForm> {
-        return { ...this._formData };
+    setPayment(value: 'online' | 'cash'): void {
+        this.updatePaymentButtons(value);
     }
 
     render(): HTMLElement {
-        this.validateForm();
         return this._container;
     }
 
     reset(): void {
-        this._formData = {};
-        this._errors = {};
         this._addressInput.value = '';
         this._paymentButtons.forEach((button) => {
             button.classList.remove('button_alt-active');
         });
-        this.updateErrors();
-        this.updateSubmitButton();
+        this._errorsElement.textContent = '';
+        this._submitButton.disabled = true;
     }
 }

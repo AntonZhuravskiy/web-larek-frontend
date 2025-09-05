@@ -32,7 +32,7 @@ const api = new Api('https://larek-api.nomoreparties.co/api/weblarek');
 // ===== СОЗДАНИЕ ЭКЗЕМПЛЯРОВ МОДЕЛЕЙ =====
 const productModel = new ProductModel();
 const basketModel = new BasketModel();
-const orderModel = new OrderModel();
+const orderModel = new OrderModel(events);
 
 // ===== СОЗДАНИЕ ЭКЗЕМПЛЯРОВ ПРЕДСТАВЛЕНИЙ =====
 let modal: ModalView;
@@ -49,7 +49,7 @@ function initViews(): void {
     gallery = new GalleryView('.gallery');
     page = new Page();
     
-    // Исправлено: создаем OrderFormView правильно
+    // Создаем представления форм
     const orderTemplate = cloneTemplate<HTMLElement>('order');
     orderFormView = new OrderFormView(orderTemplate, events);
     
@@ -153,20 +153,28 @@ function setupEventListeners(): void {
         events.emit(AppEvents.BASKET_UPDATED, basketModel.getState());
     });
 
+    // Обновление ошибок формы заказа
+    events.on('errors:update', (errors: Record<string, string>) => {
+        orderFormView.updateErrors(errors);
+    });
+
+    // Обновление ошибок формы контактов
+    events.on('contacts:errors:update', (errors: Record<string, string>) => {
+        contactsFormView.updateErrors(errors);
+    });
+
     // Открытие формы заказа
     events.on('order:open', () => {
         openOrderModal();
     });
 
-    // Обновление данных заказа
-    events.on('order:submit', (formData: Partial<IOrderForm>) => {
-        orderModel.updateOrderData(formData);
+    // Отправка формы заказа
+    events.on('order:submit', () => {
         openContactsModal();
     });
 
-    // Обновление данных контактов
-    events.on('contacts:submit', (formData: Partial<IOrderForm>) => {
-        orderModel.updateOrderData(formData);
+    // Отправка формы контактов
+    events.on('contacts:submit', () => {
         submitOrder();
     });
 
@@ -277,17 +285,22 @@ function openBasketModal(): void {
 
 // ===== ОТКРЫТИЕ МОДАЛЬНОГО ОКНА ЗАКАЗА =====
 function openOrderModal(): void {
-    // Сначала рендерим форму (для валидации и обновления состояния)
+    // Принудительно запускаем валидацию формы заказа
+    orderModel.validateOrder();
     orderFormView.render();
-    // Затем показываем контейнер формы в модальном окне
     modal.render({ content: orderFormView.container });
 }
 
 // ===== ОТКРЫТИЕ МОДАЛЬНОГО ОКНА КОНТАКТОВ =====
 function openContactsModal(): void {
-    // Сначала рендерим форму (для валидации и обновления состояния)
-    contactsFormView.render();
-    // Затем показываем контейнер формы в модальном окне
+    // Устанавливаем текущие данные в форму
+    const orderData = orderModel.getOrderData();
+    if (orderData.email) contactsFormView.setEmail(orderData.email);
+    if (orderData.phone) contactsFormView.setPhone(orderData.phone);
+    
+    // Принудительно запускаем валидацию формы контактов
+    orderModel.validateContacts();
+    
     modal.render({ content: contactsFormView.container });
 }
 
@@ -295,13 +308,22 @@ function openContactsModal(): void {
 async function submitOrder(): Promise<void> {
     try {
         const basketState = basketModel.getState();
+        
+        if (!orderModel.isContactsValid()) {
+            alert('Пожалуйста, заполните правильно все поля контактов');
+            return;
+        }
+
+        // Создаем заказ
         const order = orderModel.createOrder(
             basketState.items.map(item => item.product.id),
             basketState.total
         );
 
+        // Отправляем заказ на сервер
         await api.post('/order', order);
         
+        // Показываем окно успеха
         showSuccessModal(basketState.total);
         
     } catch (error) {

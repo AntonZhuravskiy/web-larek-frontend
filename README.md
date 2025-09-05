@@ -1,4 +1,3 @@
-
 # WebLarek - Интернет-магазин цифровых товаров
 
 ## Описание проекта
@@ -42,211 +41,268 @@ npm run deploy        # Деплой на GitHub Pages
 ### Структура проекта
 ```
 src/
-├── common.blocks/     # SCSS-блоки по методологии БЭМ
 ├── components/
 │   └── base/         # Базовые компоненты (API, EventEmitter)
 ├── model/            # Модели данных (Model слой)
 ├── view/             # Представления (View слой)
-├── pages/            # HTML-страницы с шаблонами
-├── scss/             # Глобальные стили
 ├── types/            # TypeScript типы и интерфейсы
 ├── utils/            # Вспомогательные утилиты
-├── vendor/           # Сторонние ресурсы
 └── index.ts          # Presenter слой (главная логика приложения)
 ```
 
-### Базовый код
+## Детальное описание компонентов
+
+### Базовые компоненты
 
 #### 1. Класс `Api` (`components/base/api.ts`)
 **Назначение:** Универсальный HTTP-клиент для взаимодействия с backend API.
-**Программный интерфейс:**
-```typescript
-class Api {
-  constructor(baseUrl: string, options?: RequestInit)
-  get<T>(uri: string): Promise<T>
-  post<T>(uri: string, data: object, method?: ApiPostMethods): Promise<T>
-  protected handleResponse<T>(response: Response): Promise<T>
-}
-```
+
+**Поля:**
+- `baseUrl: string` - базовый URL API
+- `options: RequestInit` - опции HTTP-запросов
+
+**Методы:**
+- `constructor(baseUrl: string, options?: RequestInit)` - инициализация клиента
+- `get<T>(uri: string): Promise<T>` - GET-запрос
+- `post<T>(uri: string, data: object, method?: ApiPostMethods): Promise<T>` - POST/PUT/DELETE запрос
+- `protected handleResponse<T>(response: Response): Promise<T>` - обработка ответов сервера
 
 #### 2. Класс `EventEmitter` (`components/base/events.ts`)
 **Назначение:** Реализация паттерна Наблюдатель для управления событиями.
-**Программный интерфейс:**
-```typescript
-interface IEvents {
-  on<T extends object>(event: EventName, callback: (data: T) => void): void
-  emit<T extends object>(event: string, data?: T): void
-  off(eventName: EventName, callback: Subscriber): void
-}
-```
+
+**Поля:**
+- `_events: Map<EventName, Set<Subscriber>>` - карта событий и подписчиков
+
+**Методы:**
+- `on<T>(event: EventName, callback: (data: T) => void): void` - подписка на событие
+- `off(eventName: EventName, callback: Subscriber): void` - отписка от события
+- `emit<T>(eventName: string, data?: T): void` - генерация события
+- `onAll(callback: (event: EmitterEvent) => void): void` - подписка на все события
+- `offAll(): void` - отписка от всех событий
+- `trigger<T>(eventName: string, context?: Partial<T>): Function` - создание триггера события
 
 ### Слой модели (Model Layer)
 
-Модели содержат только логику работы с данными, без операций с DOM.
-
 #### 1. Класс `ProductModel` (`model/ProductModel.ts`)
 **Назначение:** Управление данными продуктов.
-**Программный интерфейс:**
-```typescript
-class ProductModel {
-  setProducts(products: IProduct[]): void
-  getProducts(): IProduct[]
-  getProduct(id: string): IProduct | undefined
-  getAvailableProducts(): IProduct[]
-  isEmpty(): boolean
-}
-```
+
+**Поля:**
+- `products: IProduct[]` - массив товаров
+
+**Методы:**
+- `setProducts(products: IProduct[]): void` - установка списка товаров
+- `getProducts(): IProduct[]` - получение всех товаров
+- `getProduct(id: string): IProduct | undefined` - получение товара по ID
+- `getAvailableProducts(): IProduct[]` - получение доступных товаров (с ценой)
+- `isEmpty(): boolean` - проверка пустоты списка товаров
 
 #### 2. Класс `BasketModel` (`model/BasketModel.ts`)
 **Назначение:** Управление состоянием корзины покупок.
-**Программный интерфейс:**
-```typescript
-class BasketModel {
-  addProduct(product: IProduct): void
-  removeProduct(productId: string): void
-  clear(): void
-  getState(): BasketState
-  isEmpty(): boolean
-  isProductInBasket(productId: string): boolean
-}
-```
+
+**Поля:**
+- `items: IBasketItem[]` - массив элементов корзины
+
+**Методы:**
+- `addProduct(product: IProduct): void` - добавление товара в корзину
+- `removeProduct(productId: string): void` - удаление товара из корзины
+- `clear(): void` - очистка корзины
+- `getTotal(): number` - расчет общей суммы
+- `getItems(): IBasketItem[]` - получение элементов корзины
+- `getCount(): number` - получение количества товаров
+- `getState(): BasketState` - получение полного состояния корзины
+- `isEmpty(): boolean` - проверка пустоты корзины
+- `isProductInBasket(productId: string): boolean` - проверка наличия товара в корзине
 
 #### 3. Класс `OrderModel` (`model/OrderModel.ts`)
-**Назначение:** Управление данными заказа.
-**Программный интерфейс:**
-```typescript
-class OrderModel {
-  updateOrderData(data: Partial<IOrderForm>): void
-  getOrderData(): Partial<IOrderForm>
-  clear(): void
-  isComplete(): boolean
-  createOrder(items: string[], total: number): IOrder
-}
-```
+**Назначение:** Управление данными заказа и валидация форм.
+
+**Поля:**
+- `orderData: Partial<IOrderForm>` - данные формы заказа
+- `_errors: FormErrors` - ошибки валидации
+
+**Методы:**
+- `constructor(events: IEvents)` - инициализация с подпиской на события
+- `updateOrderData(data: { field: keyof IOrderForm, value: string }): void` - обновление данных заказа
+- `updateContactsData(data: { field: keyof IOrderForm, value: string }): void` - обновление данных контактов
+- `validateOrderForm(): void` - валидация формы заказа
+- `validateContactsForm(): void` - валидация формы контактов
+- `validateOrder(): void` - принудительная валидация заказа
+- `validateContacts(): void` - принудительная валидация контактов
+- `getOrderData(): Partial<IOrderForm>` - получение данных заказа
+- `getErrors(): FormErrors` - получение ошибок валидации
+- `isOrderValid(): boolean` - проверка валидности заказа
+- `isContactsValid(): boolean` - проверка валидности контактов
+- `isComplete(): boolean` - проверка полноты всех данных
+- `clear(): void` - очистка данных заказа
+- `createOrder(items: string[], total: number): IOrder` - создание объекта заказа
 
 ### Слой представления (View Layer)
 
-Представления работают только с DOM-элементами и их отображением.
+#### 1. Класс `CardView` (`view/CardView.ts`)
+**Назначение:** Базовое представление карточки товара.
 
-#### 1. Класс `CardView` / `CardPreviewView` (`view/CardView.ts`)
-**Назначение:** Отображение карточек товаров в галерее и модальных окнах.
-**Программный интерфейс:**
-```typescript
-class CardView {
-  constructor(container: HTMLElement, actions?: ICardActions)
-  render(data: Partial<IProduct>): HTMLElement
-  // Setters: title, price, image, category, buttonText
-}
+**Поля:**
+- `_container: HTMLElement` - DOM-контейнер карточки
+- `_title: HTMLElement` - элемент заголовка
+- `_price: HTMLElement` - элемент цены
+- `_image: HTMLImageElement` - элемент изображения
+- `_category: HTMLElement` - элемент категории
+- `_button: HTMLButtonElement | null` - кнопка действия
 
-class CardPreviewView extends CardView {
-  setInBasketState(): void
-  setNotInBasketState(): void  
-  setUnavailableState(): void
-}
-```
+**Методы:**
+- `constructor(container: HTMLElement, actions?: ICardActions)` - инициализация карточки
+- `onClick(handler: () => void): void` - установка обработчика клика
+- `render(data: Partial<IProduct>): HTMLElement` - отрисовка карточки
+- Сеттеры для установки свойств: `title`, `price`, `image`, `category`, `buttonText`
 
-#### 2. Класс `BasketView` (`view/BasketView.ts`)
-**Назначение:** Отображение корзины покупок.
-**Программный интерфейс:**
-```typescript
-class BasketView {
-  constructor(container: HTMLElement, events: IEvents)
-  render(data: { items: IBasketItem[], total: number }): HTMLElement
-}
-```
+#### 2. Класс `CardPreviewView` (`view/CardView.ts`)
+**Назначение:** Расширенное представление карточки для превью.
 
-#### 3. Класс `ModalView` (`view/ModalView.ts`)
+**Наследует:** `CardView`
+
+**Дополнительные поля:**
+- `_description: HTMLElement` - элемент описания товара
+
+**Дополнительные методы:**
+- `setInBasketState(): void` - установка состояния "в корзине"
+- `setNotInBasketState(): void` - установка состояния "не в корзине"
+- `setUnavailableState(): void` - установка состояния "недоступно"
+
+#### 3. Класс `BasketView` (`view/BasketView.ts`)
+**Назначение:** Представление корзины покупок.
+
+**Поля:**
+- `_container: HTMLElement` - DOM-контейнер корзины
+- `_list: HTMLElement` - список элементов корзины
+- `_total: HTMLElement` - элемент общей суммы
+- `_button: HTMLButtonElement` - кнопка оформления заказа
+
+**Методы:**
+- `constructor(container: HTMLElement, events: IEvents)` - инициализация корзины
+- `update(data: { items: HTMLElement[], total: number }): void` - обновление данных корзины
+- `set items(items: IBasketItem[])` - установка элементов корзины
+- `set total(value: number)` - установка общей суммы
+- `render(data: { items: IBasketItem[], total: number }): HTMLElement` - отрисовка корзины
+- `get container(): HTMLElement` - получение контейнера
+
+#### 4. Класс `BasketItemView` (`view/BasketView.ts`)
+**Назначение:** Представление элемента корзины.
+
+**Поля:**
+- `_container: HTMLElement` - DOM-контейнер элемента
+- `_index: HTMLElement` - элемент индекса
+- `_title: HTMLElement` - элемент названия товара
+- `_price: HTMLElement` - элемента цены
+- `_button: HTMLButtonElement` - кнопка удаления
+
+**Методы:**
+- `constructor(container: HTMLElement, actions?: { onClick: () => void })` - инициализация
+- `render(item: IBasketItem, index: number): HTMLElement` - отрисовка элемента
+- Сеттеры: `index`, `title`, `price`
+
+#### 5. Класс `ModalView` (`view/ModalView.ts`)
 **Назначение:** Управление модальными окнами.
-**Программный интерфейс:**
-```typescript
-class ModalView {
-  constructor(selector: string)
-  open(): void
-  close(): void
-  render(data: IModalData): HTMLElement
-}
-```
 
-#### 4. Класс `GalleryView` (`view/GalleryView.ts`)
-**Назначение:** Отображение галереи товаров.
-**Программный интерфейс:**
-```typescript
-class GalleryView {
-  constructor(selector: string)
-  render(products: IProduct[], renderCard: (product: IProduct) => HTMLElement): void
-  clear(): void
-}
-```
+**Поля:**
+- `_modal: HTMLElement` - DOM-элемент модального окна
+- `_content: HTMLElement` - элемент содержимого
+- `_closeButton: HTMLElement` - кнопка закрытия
 
-#### 5. Классы форм (`view/OrderView.ts`, `view/ContactsView.ts`)
-**Назначение:** Отображение и валидация форм заказа.
-**Программный интерфейс:**
-```typescript
-class OrderFormView {
-  constructor(container: HTMLElement, events: IEvents)
-  render(): HTMLElement
-  reset(): void
-}
+**Методы:**
+- `constructor(selector: string)` - инициализация по селектору
+- `set content(value: HTMLElement)` - установка содержимого
+- `open(): void` - открытие модального окна
+- `close(): void` - закрытие модального окна
+- `render(data: IModalData): HTMLElement` - отрисовка модального окна
 
-class ContactsFormView {
-  constructor(container: HTMLElement, events: IEvents)  
-  render(): HTMLElement
-  reset(): void
-}
-```
+#### 6. Класс `GalleryView` (`view/GalleryView.ts`)
+**Назначение:** Представление галереи товаров.
 
-#### 6. Класс `SuccessView` (`view/SuccessView.ts`)
-**Назначение:** Отображение экрана успешного заказа.
-**Программный интерфейс:**
-```typescript
-class SuccessView {
-  constructor(container: HTMLElement, events: IEvents)
-  render(data: { total: number }): HTMLElement
-}
-```
+**Поля:**
+- `_container: HTMLElement` - DOM-контейнер галереи
 
-### Слой Presenter
+**Методы:**
+- `constructor(selector: string)` - инициализация по селектору
+- `clear(): void` - очистка галереи
+- `addCard(cardElement: HTMLElement): void` - добавление карточки
+- `render(products: IProduct[], renderCard: (product: IProduct) => HTMLElement): void` - отрисовка галереи
 
-Presenter реализован в `src/index.ts` и содержит всю логику приложения:
+#### 7. Класс `OrderFormView` (`view/OrderView.ts`)
+**Назначение:** Представление формы заказа.
 
-- Создание экземпляров моделей и представлений
-- Настройка EventEmitter как шины событий  
-- Обработка пользовательских действий через события
-- Взаимодействие с API
-- Координация работы между Model и View слоями
+**Поля:**
+- `_container: HTMLElement` - DOM-контейнер формы
+- `_paymentButtons: HTMLButtonElement[]` - кнопки выбора оплаты
+- `_addressInput: HTMLInputElement` - поле ввода адреса
+- `_submitButton: HTMLButtonElement` - кнопка отправки
+- `_errorsElement: HTMLElement` - элемент отображения ошибок
+- `_form: HTMLFormElement` - элемент формы
 
-**Основные функции:**
-```typescript
-// Инициализация приложения
-async function init(): Promise<void>
+**Методы:**
+- `constructor(container: HTMLElement, events: IEvents)` - инициализация формы
+- `updateErrors(errors: Record<string, string>): void` - обновление ошибок валидации
+- `setAddress(value: string): void` - установка значения адреса
+- `setPayment(value: 'online' | 'cash'): void` - установка способа оплаты
+- `render(): HTMLElement` - отрисовка формы
+- `reset(): void` - сброс формы
+- `get container(): HTMLElement` - получение контейнера
 
-// Загрузка продуктов через API
-async function loadProducts(): Promise<void>
+#### 8. Класс `ContactsFormView` (`view/ContactsView.ts`)
+**Назначение:** Представление формы контактов.
 
-// Настройка обработчиков событий
-function setupEventListeners(): void
+**Поля:**
+- `_container: HTMLElement` - DOM-контейнер формы
+- `_emailInput: HTMLInputElement` - поле ввода email
+- `_phoneInput: HTMLInputElement` - поле ввода телефона
+- `_submitButton: HTMLButtonElement` - кнопка отправки
+- `_errorsElement: HTMLElement` - элемент отображения ошибок
+- `_form: HTMLFormElement` - элемент формы
 
-// Отрисовка продуктов в галерее
-function renderProducts(products: IProduct[]): void
+**Методы:**
+- `constructor(container: HTMLElement, events: IEvents)` - инициализация формы
+- `updateErrors(errors: Record<string, string>): void` - обновление ошибок валидации
+- `setEmail(value: string): void` - установка значения email
+- `setPhone(value: string): void` - установка значения телефона
+- `render(): HTMLElement` - отрисовка формы
+- `reset(): void` - сброс формы
+- `get container(): HTMLElement` - получение контейнера
 
-// Открытие модальных окон
-function openProductModal(product: IProduct): void
-function openBasketModal(): void
-function openOrderModal(): void
+#### 9. Класс `SuccessView` (`view/SuccessView.ts`)
+**Назначение:** Представление экрана успешного заказа.
 
-// Отправка заказа
-async function submitOrder(): Promise<void>
-```
+**Поля:**
+- `_container: HTMLElement` - DOM-контейнер
+- `_description: HTMLElement` - элемент описания
+- `_closeButton: HTMLButtonElement` - кнопка закрытия
+
+**Методы:**
+- `constructor(container: HTMLElement, events: IEvents)` - инициализация
+- `set total(value: number)` - установка общей суммы
+- `render(data: { total: number }): HTMLElement` - отрисовка экрана успеха
+
+#### 10. Класс `Page` (`view/Page.ts`)
+**Назначение:** Управление основными элементами страницы.
+
+**Поля:**
+- `basketCounter: HTMLElement` - счетчик корзины
+- `basketButton: HTMLElement` - кнопка корзины
+
+**Методы:**
+- `constructor()` - инициализация элементов страницы
+- `updateBasketCounter(count: number): void` - обновление счетчика корзины
 
 ### Вспомогательные утилиты (`utils/utils.ts`)
-```typescript
-function ensureElement<T extends HTMLElement>(selector: string, context?: HTMLElement): T
-function cloneTemplate<T extends HTMLElement>(templateId: string): T
-```
 
-## Типы данных
+**Методы:**
+- `ensureElement<T extends HTMLElement>(selector: string, context?: HTMLElement): T` - гарантированное получение DOM-элемента
+- `cloneTemplate<T extends HTMLElement>(templateId: string): T` - клонирование HTML-шаблона
 
-Основные типы определены в `src/types/index.ts`:
+### Константы (`utils/constants.ts`)
+
+**Поля:**
+- `CDN_URL: string` - базовый URL для CDN изображений
+
+## Типы данных (`types/index.ts`)
 
 ### Базовые сущности
 ```typescript
@@ -254,6 +310,7 @@ interface IProduct {
   id: string
   title: string
   price: number | null  // null = "Бесценно"
+  description?: string
   category: string
   image: string
 }
@@ -261,6 +318,12 @@ interface IProduct {
 interface IBasketItem {
   product: IProduct
   quantity: number
+}
+
+interface BasketState {
+  items: IBasketItem[]
+  total: number
+  count: number
 }
 ```
 
@@ -277,6 +340,8 @@ interface IOrder extends IOrderForm {
   items: string[]  // Array of product IDs
   total: number
 }
+
+type FormErrors = Partial<Record<keyof IOrderForm, string>>
 ```
 
 ### События приложения
@@ -285,8 +350,41 @@ enum AppEvents {
   PRODUCTS_LOADED = 'products:loaded',
   BASKET_UPDATED = 'basket:updated',
   ORDER_CREATED = 'order:created',
+  MODAL_OPEN = 'modal:open',
+  MODAL_CLOSE = 'modal:close',
+  CARD_SELECT = 'card:select',
   CARD_ADD = 'card:add',
   CARD_REMOVE = 'card:remove'
+}
+
+interface CardAddEvent {
+  product: IProduct
+}
+
+interface CardRemoveEvent {
+  productId: string
+}
+
+interface BasketUpdatedEvent {
+  items: IBasketItem[]
+  total: number
+  count: number
+}
+```
+
+### Интерфейсы компонентов
+```typescript
+interface ICardActions {
+  onClick: (event: MouseEvent) => void
+}
+
+interface IBasketView {
+  items: HTMLElement[]
+  total: number
+}
+
+interface IModalData {
+  content: HTMLElement
 }
 ```
 
@@ -376,6 +474,4 @@ type ApiPostMethods = 'POST' | 'PUT' | 'DELETE'
 **Архитектура:** MVP (Model-View-Presenter) + Event-Driven Architecture  
 **Подход:** Слоевая архитектура со строгим разделением ответственности
 
-
-
-Размещение в сети  : https://github.com/AntonZhuravskiy/web-larek-frontend.git
+**Размещение в сети:** [GitHub Repository](https://github.com/AntonZhuravskiy/web-larek-frontend.git)
