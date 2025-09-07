@@ -1,6 +1,8 @@
+// CardView.ts
 import { ensureElement } from '../utils/utils';
-import { IProduct, ICardActions } from '../types';
+import { IProduct, ICardActions, CardState } from '../types';
 import { CDN_URL } from '../utils/constants';
+import { CardModel } from '../model/CardModel';
 
 export class CardView {
 	protected _container: HTMLElement;
@@ -23,61 +25,46 @@ export class CardView {
 				'.card__button',
 				container
 			);
-			if (actions?.onClick) {
+			if (actions?.onClick)
 				this._button.addEventListener('click', actions.onClick);
-			}
 		} catch {
 			try {
 				this._button = ensureElement<HTMLButtonElement>('.button', container);
-				if (actions?.onClick) {
+				if (actions?.onClick)
 					this._button.addEventListener('click', actions.onClick);
-				}
 			} catch {
 				this._button = null;
 			}
 		}
 	}
 
-	// Добавляем метод для установки обработчика клика
+	// Возможность навесить обработчик позже
 	onClick(handler: () => void): void {
-		if (this._button) {
-			this._button.addEventListener('click', (event: MouseEvent) => {
-				event.preventDefault();
-				handler();
-			});
-		} else {
-			this._container.addEventListener('click', (event: MouseEvent) => {
-				event.preventDefault();
-				handler();
-			});
-		}
+		const target: HTMLElement = this._button ?? this._container;
+		target.addEventListener('click', (event: MouseEvent) => {
+			event.preventDefault();
+			handler();
+		});
 	}
 
 	set title(value: string) {
 		this.setText(this._title, value);
 	}
 
+	// ✅ только текст; никаких бизнес-решений
 	set price(value: number | null) {
-		if (value === null) {
-			this.setText(this._price, 'Бесценно');
-			if (this._button) {
-				this._button.disabled = true;
-			}
-		} else {
-			this.setText(this._price, `${value} синапсов`);
-			if (this._button) {
-				this._button.disabled = false;
-			}
-		}
+		this.setText(
+			this._price,
+			value === null ? 'Бесценно' : `${value} синапсов`
+		);
 	}
 
 	set image(value: string) {
-		this._image.src = (CDN_URL + value.slice(0, -3) + 'png');
+		this._image.src = CDN_URL + value.slice(0, -3) + 'png';
 	}
 
 	set category(value: string) {
 		this.setText(this._category, value);
-
 		const categoryClassMap: Record<string, string> = {
 			'софт-скил': 'card__category_soft',
 			'хард-скил': 'card__category_hard',
@@ -85,21 +72,16 @@ export class CardView {
 			дополнительное: 'card__category_additional',
 			кнопка: 'card__category_button',
 		};
-
 		const categoryClass = categoryClassMap[value] || 'card__category_other';
 		this._category.className = `card__category ${categoryClass}`;
 	}
 
 	set buttonText(value: string) {
-		if (this._button) {
-			this.setText(this._button, value);
-		}
+		if (this._button) this.setText(this._button, value);
 	}
 
 	protected setText(element: HTMLElement, value: unknown): void {
-		if (element) {
-			element.textContent = String(value);
-		}
+		if (element) element.textContent = String(value);
 	}
 
 	protected setImage(
@@ -109,15 +91,65 @@ export class CardView {
 	): void {
 		if (element) {
 			element.src = src;
-			if (alt) {
-				element.alt = alt;
-			}
+			if (alt) element.alt = alt;
 		}
 	}
 
 	render(data: Partial<IProduct>): HTMLElement {
 		Object.assign(this, data);
 		return this._container;
+	}
+
+	/** UI-состояния кнопки — теперь доступны в базовом классе */
+	public setInBasketState(): void {
+		if (!this._button) return;
+		this._button.textContent = 'Удалить из корзины';
+		this._button.classList.remove('button_alt');
+		this._button.classList.add('button_remove');
+		this._button.disabled = false;
+	}
+
+	public setNotInBasketState(): void {
+		if (!this._button) return;
+		this._button.textContent = 'Купить';
+		this._button.classList.remove('button_alt', 'button_remove');
+		this._button.disabled = false;
+	}
+
+	public setUnavailableState(): void {
+		if (!this._button) return;
+		this._button.textContent = 'Недоступно';
+		this._button.classList.remove('button_alt', 'button_remove');
+		this._button.disabled = true;
+	}
+
+	/** Применяет состояние карточки, которое дал CardModel */
+	public cardRender(state: CardState): HTMLElement {
+		const p = state.product;
+		this.title = p.title;
+		this.price = p.price;
+
+		// подставьте ваши реальные имена полей, если отличаются
+		if ((p as any).image) this.image = (p as any).image;
+		if ((p as any).category) this.category = (p as any).category;
+
+		switch (state.purchaseState) {
+			case 'UNAVAILABLE':
+				this.setUnavailableState();
+				break;
+			case 'IN_BASKET':
+				this.setInBasketState();
+				break;
+			case 'NOT_IN_BASKET':
+				this.setNotInBasketState();
+				break;
+		}
+		return this._container;
+	}
+
+	/** Хелпер: отрендерить напрямую из модели */
+	public cardRenderFromModel(model: CardModel): HTMLElement {
+		return this.cardRender(model.cardGetState());
 	}
 }
 
@@ -131,30 +163,5 @@ export class CardPreviewView extends CardView {
 
 	set description(value: string) {
 		this.setText(this._description, value);
-	}
-
-	setInBasketState(): void {
-		if (this._button) {
-			this._button.textContent = 'Удалить из корзины';
-			this._button.classList.remove('button_alt');
-			this._button.classList.add('button_remove');
-			this._button.disabled = false;
-		}
-	}
-
-	setNotInBasketState(): void {
-		if (this._button) {
-			this._button.textContent = 'Купить';
-			this._button.classList.remove('button_alt', 'button_remove');
-			this._button.disabled = false;
-		}
-	}
-
-	setUnavailableState(): void {
-		if (this._button) {
-			this._button.textContent = 'Недоступно';
-			this._button.classList.remove('button_alt', 'button_remove');
-			this._button.disabled = true;
-		}
 	}
 }
