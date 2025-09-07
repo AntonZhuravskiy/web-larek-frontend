@@ -1,5 +1,3 @@
-// BasketModel.ts
-
 import { IProduct, IBasketItem } from '../types';
 
 export interface BasketState {
@@ -42,14 +40,10 @@ export class BasketModel {
 	}
 
 	/**
-	 * Возвращает итоговую стоимость корзины.
+	 * Возвращает итоговую стоимость ТЕКУЩЕЙ корзины.
 	 */
 	public basketGetTotal(): number {
-		return this.basketItems.reduce((sum, i) => {
-			return i.product.price !== null
-				? sum + i.product.price * i.quantity
-				: sum;
-		}, 0);
+		return this.basketCalculateTotalFor(this.basketItems);
 	}
 
 	/**
@@ -89,6 +83,18 @@ export class BasketModel {
 	 * Возвращает стоимость строки товара (цена * количество).
 	 */
 	public basketGetItemTotal(item: IBasketItem): number | null {
-		return item.product.price !== null ? item.product.price * item.quantity : null;
+		return item.product.price !== null
+			? item.product.price * item.quantity
+			: null;
+	}
+
+	/**
+	 * Считает итоговую сумму для произвольного списка позиций (вынесено из View).
+	 */
+	public basketCalculateTotalFor(items: IBasketItem[]): number {
+		return items.reduce((total, item) => {
+			const line = this.basketGetItemTotal(item);
+			return line !== null ? total + line : total;
+		}, 0);
 	}
 }

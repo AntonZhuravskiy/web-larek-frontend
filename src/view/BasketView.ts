@@ -1,8 +1,7 @@
-// BasketView.ts
-
 import { ensureElement, cloneTemplate } from '../utils/utils';
 import { IBasketItem, AppEvents } from '../types';
 import { IEvents } from '../components/base/events';
+import { BasketModel } from '../model/BasketModel';
 
 export class BasketView {
 	protected _container: HTMLElement;
@@ -10,7 +9,11 @@ export class BasketView {
 	protected _total: HTMLElement;
 	protected _button: HTMLButtonElement;
 
-	constructor(container: HTMLElement, private events: IEvents) {
+	constructor(
+		container: HTMLElement,
+		private events: IEvents,
+		private model: BasketModel // инжектим модель, чтобы НЕ считать во View
+	) {
 		this._container = container;
 		this._list = ensureElement<HTMLElement>('.basket__list', container);
 		this._total = ensureElement<HTMLElement>('.basket__price', container);
@@ -38,16 +41,22 @@ export class BasketView {
 		}
 
 		this._total.textContent = `${data.total} синапсов`;
-		this.basketUpdateButton(data.items.length > 0);
+		this.basketUpdateButton(); // решаем по состоянию модели
 	}
 
-	/** Устанавливает позиции корзины с пересчётом суммы. */
+	/**
+	 * Устанавливает позиции корзины с ПЕРЕСЧЁТОМ СУММЫ В МОДЕЛИ.
+	 * View больше не считает total самостоятельно.
+	 */
 	set basketItems(items: IBasketItem[]) {
 		const basketItems = items.map((item, index) => {
 			const el = cloneTemplate<HTMLElement>('card-basket');
 			const view = new BasketItemView(el, {
 				onClick: () =>
-					this.events.emit(AppEvents.BASKET_REMOVE, { productId: item.product.id }),
+					this.events.emit(AppEvents.BASKET_REMOVE, {
+						productId: item.product.id,
+					}),
+				getItemTotal: (i) => this.model.basketGetItemTotal(i), // логика из модели
 			});
 			view.basketRender(item, index + 1);
 			return el;
@@ -55,7 +64,7 @@ export class BasketView {
 
 		this.basketUpdate({
 			items: basketItems,
-			total: this.basketCalculateTotal(items),
+			total: this.model.basketCalculateTotalFor(items), // считаем через модель
 		});
 	}
 
@@ -64,22 +73,15 @@ export class BasketView {
 		this._total.textContent = `${value} синапсов`;
 	}
 
-	/** Обновляет состояние кнопки оформления заказа. */
-	protected basketUpdateButton(hasItems: boolean): void {
-		this._button.disabled = !hasItems;
+	/** Обновляет состояние кнопки оформления заказа по состоянию модели. */
+	protected basketUpdateButton(): void {
+		this._button.disabled = this.model.basketGetCount() <= 0;
 	}
 
-	/** Считает итоговую сумму корзины из списка позиций (для совместимости). */
-	protected basketCalculateTotal(items: IBasketItem[]): number {
-		return items.reduce((total, item) => {
-			return item.product.price !== null
-				? total + item.product.price * item.quantity
-				: total;
-		}, 0);
-	}
-
-
-	/** Полный рендер корзины (совместимость со старым кодом). */
+	/**
+	 * Полный рендер корзины (совместимость со старым кодом).
+	 * УМНОЖЕНИЕ price*quantity ВЫНЕСЕНО: используем модель для lineTotal.
+	 */
 	public basketRender(data: {
 		items: IBasketItem[];
 		total: number;
@@ -105,22 +107,29 @@ export class BasketView {
 			);
 
 			titleElement.textContent = item.product.title;
+
+			const lineTotal = this.model.basketGetItemTotal(item); // логика в модели
 			priceElement.textContent =
-				item.product.price !== null
-					? `${item.product.price * item.quantity} синапсов`
-					: 'Бесценно';
+				lineTotal !== null ? `${lineTotal} синапсов` : 'Бесценно';
+
 			indexElement.textContent = (index + 1).toString();
 
 			deleteButton.addEventListener('click', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
-				this.events.emit(AppEvents.BASKET_REMOVE, { productId: item.product.id });
+				this.events.emit(AppEvents.BASKET_REMOVE, {
+					productId: item.product.id,
+				});
 			});
 
 			return basketItemElement;
 		});
 
-		this.basketUpdate({ items: basketItems, total: data.total });
+		// total считаем через модель, а не доверяем входному значению.
+		this.basketUpdate({
+			items: basketItems,
+			total: this.model.basketCalculateTotalFor(data.items),
+		});
 		return this._container;
 	}
 
@@ -143,7 +152,13 @@ class BasketItemView {
 	protected _price: HTMLElement;
 	protected _button: HTMLButtonElement;
 
-	constructor(container: HTMLElement, actions?: { onClick: () => void }) {
+	constructor(
+		container: HTMLElement,
+		actions?: {
+			onClick?: () => void;
+			getItemTotal?: (item: IBasketItem) => number | null; // калькулятор из модели
+		}
+	) {
 		this._container = container;
 		this._index = ensureElement<HTMLElement>('.basket__item-index', container);
 		this._title = ensureElement<HTMLElement>('.card__title', container);
@@ -160,7 +175,11 @@ class BasketItemView {
 				actions.onClick();
 			});
 		}
+
+		this._getItemTotal = actions?.getItemTotal ?? (() => null);
 	}
+
+	private _getItemTotal: (item: IBasketItem) => number | null;
 
 	set basketIndex(value: number) {
 		this._index.textContent = value.toString();
@@ -177,8 +196,7 @@ class BasketItemView {
 	public basketRender(item: IBasketItem, index: number): HTMLElement {
 		this.basketIndex = index;
 		this.basketTitle = item.product.title;
-		this.basketPrice =
-			item.product.price !== null ? item.product.price * item.quantity : null;
+		this.basketPrice = this._getItemTotal(item);
 		return this._container;
 	}
 }
