@@ -1,4 +1,4 @@
-import { IOrderForm, IOrder, FormErrors } from '../types';
+import { IOrderForm, IOrder, FormErrors, AppEvents } from '../types';
 import { IEvents } from '../components/base/events';
 
 export class OrderModel {
@@ -7,8 +7,8 @@ export class OrderModel {
     
     constructor(private events: IEvents) {
         // Подписываемся на обновления данных
-        events.on('order:update', this.updateOrderData.bind(this));
-        events.on('contacts:update', this.updateContactsData.bind(this));
+        events.on(AppEvents.ORDER_UPDATE, this.updateOrderData.bind(this));
+        events.on(AppEvents.CONTACTS_UPDATE, this.updateContactsData.bind(this));
     }
 
     // Обновление данных заказа (payment, address)
@@ -36,7 +36,7 @@ export class OrderModel {
         }
 
         // Эмитим ошибки для формы заказа
-        this.events.emit('errors:update', this._errors);
+        this.events.emit(AppEvents.ERRORS_UPDATE, this._errors);
     }
 
     // Валидация формы контактов
@@ -54,7 +54,7 @@ export class OrderModel {
         }
 
         // Эмитим ошибки для формы контактов
-        this.events.emit('contacts:errors:update', this._errors);
+        this.events.emit(AppEvents.CONTACTS_ERRORS_UPDATE, this._errors);
     }
 
     // Принудительная валидация формы заказа
@@ -102,8 +102,8 @@ export class OrderModel {
     clear(): void {
         this.orderData = {};
         this._errors = {};
-        this.events.emit('errors:update', {});
-        this.events.emit('contacts:errors:update', {});
+        this.events.emit(AppEvents.ERRORS_UPDATE, {});
+        this.events.emit(AppEvents.CONTACTS_ERRORS_UPDATE, {});
     }
 
     // Создание объекта заказа

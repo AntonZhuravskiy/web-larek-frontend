@@ -1,5 +1,6 @@
 import { ensureElement } from '../utils/utils';
 import { IEvents } from '../components/base/events';
+import { AppEvents } from '../types';
 
 export class ContactsFormView {
     protected _container: HTMLElement;
@@ -33,7 +34,7 @@ export class ContactsFormView {
     private setupEventListeners(): void {
         this._emailInput.addEventListener('input', () => {
             // Эмитим событие обновления, а не валидируем здесь
-            this.events.emit('contacts:update', { 
+            this.events.emit(AppEvents.CONTACTS_UPDATE, { 
                 field: 'email', 
                 value: this._emailInput.value 
             });
@@ -41,7 +42,7 @@ export class ContactsFormView {
 
         this._phoneInput.addEventListener('input', () => {
             // Эмитим событие обновления, а не валидируем здесь
-            this.events.emit('contacts:update', { 
+            this.events.emit(AppEvents.CONTACTS_UPDATE, { 
                 field: 'phone', 
                 value: this._phoneInput.value 
             });
@@ -49,7 +50,7 @@ export class ContactsFormView {
 
         this._form.addEventListener('submit', (event) => {
             event.preventDefault();
-            this.events.emit('contacts:submit');
+            this.events.emit(AppEvents.CONTACTS_SUBMIT);
         });
     }
 

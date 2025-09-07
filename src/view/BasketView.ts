@@ -1,7 +1,7 @@
 // BasketView.ts
 
 import { ensureElement, cloneTemplate } from '../utils/utils';
-import { IBasketItem } from '../types';
+import { IBasketItem, AppEvents } from '../types';
 import { IEvents } from '../components/base/events';
 
 export class BasketView {
@@ -20,7 +20,7 @@ export class BasketView {
 		);
 
 		this._button.addEventListener('click', () => {
-			this.events.emit('order:open');
+			this.events.emit(AppEvents.ORDER_OPEN);
 		});
 	}
 
@@ -47,7 +47,7 @@ export class BasketView {
 			const el = cloneTemplate<HTMLElement>('card-basket');
 			const view = new BasketItemView(el, {
 				onClick: () =>
-					this.events.emit('basket:remove', { productId: item.product.id }),
+					this.events.emit(AppEvents.BASKET_REMOVE, { productId: item.product.id }),
 			});
 			view.basketRender(item, index + 1);
 			return el;
@@ -114,7 +114,7 @@ export class BasketView {
 			deleteButton.addEventListener('click', (e) => {
 				e.preventDefault();
 				e.stopPropagation();
-				this.events.emit('basket:remove', { productId: item.product.id });
+				this.events.emit(AppEvents.BASKET_REMOVE, { productId: item.product.id });
 			});
 
 			return basketItemElement;

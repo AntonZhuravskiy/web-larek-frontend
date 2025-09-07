@@ -1,5 +1,6 @@
 import { ensureElement } from '../utils/utils';
 import { IEvents } from '../components/base/events';
+import { AppEvents } from '../types';
 
 export class SuccessView {
     protected _container: HTMLElement;
@@ -16,7 +17,7 @@ export class SuccessView {
 
     private setupEventListeners(): void {
         this._closeButton.addEventListener('click', () => {
-            this.events.emit('success:close');
+            this.events.emit(AppEvents.SUCCESS_CLOSE);
         });
     }
 

@@ -1,5 +1,6 @@
 import { ensureElement } from '../utils/utils';
 import { IEvents } from '../components/base/events';
+import { AppEvents } from '../types';
 
 export class OrderFormView {
     protected _container: HTMLElement;
@@ -51,7 +52,7 @@ export class OrderFormView {
                 const payment = buttonName === 'card' ? 'online' : 'cash';
                 
                 // Эмитим событие обновления, а не валидируем здесь
-                this.events.emit('order:update', { 
+                this.events.emit(AppEvents.ORDER_UPDATE, { 
                     field: 'payment', 
                     value: payment 
                 });
@@ -63,7 +64,7 @@ export class OrderFormView {
 
         // Обработчик для поля адреса
         this._addressInput.addEventListener('input', () => {
-            this.events.emit('order:update', { 
+            this.events.emit(AppEvents.ORDER_UPDATE, { 
                 field: 'address', 
                 value: this._addressInput.value 
             });
@@ -72,7 +73,7 @@ export class OrderFormView {
         // Обработчик отправки формы
         this._form.addEventListener('submit', (event) => {
             event.preventDefault();
-            this.events.emit('order:submit');
+            this.events.emit(AppEvents.ORDER_SUBMIT);
         });
     }
 

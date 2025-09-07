@@ -34,7 +34,17 @@ export enum AppEvents {
     MODAL_CLOSE = 'modal:close',
     CARD_SELECT = 'card:select',
     CARD_ADD = 'card:add',
-    CARD_REMOVE = 'card:remove'
+    CARD_REMOVE = 'card:remove',
+    BASKET_CLEAR = 'basket:clear',
+    ERRORS_UPDATE = 'errors:update',
+    CONTACTS_ERRORS_UPDATE = 'contacts:errors:update',
+    ORDER_OPEN = 'order:open',
+    ORDER_SUBMIT = 'order:submit',
+    CONTACTS_SUBMIT = 'contacts:submit',
+    SUCCESS_CLOSE = 'success:close',
+    ORDER_UPDATE = 'order:update',
+    CONTACTS_UPDATE = 'contacts:update',
+    BASKET_REMOVE = 'basket:remove'
 }
 
 export interface ICardActions {

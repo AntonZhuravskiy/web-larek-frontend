@@ -108,53 +108,53 @@ function setupEventListeners(): void {
 
 	// Добавление товара в корзину
 	events.on(AppEvents.CARD_ADD, (event: { product: IProduct }) => {
-		basketModel.addProduct(event.product);
-		events.emit(AppEvents.BASKET_UPDATED, basketModel.getState());
+		basketModel.basketAddProduct(event.product);
+		events.emit(AppEvents.BASKET_UPDATED, basketModel.basketGetState());
 	});
 
 	// Удаление товара из корзины
 	events.on(AppEvents.CARD_REMOVE, (event: { productId: string }) => {
-		basketModel.removeProduct(event.productId);
-		events.emit(AppEvents.BASKET_UPDATED, basketModel.getState());
+		basketModel.basketRemoveProduct(event.productId);
+		events.emit(AppEvents.BASKET_UPDATED, basketModel.basketGetState());
 	});
 
 	// Очистка корзины
-	events.on('basket:clear', () => {
-		basketModel.clear();
-		events.emit(AppEvents.BASKET_UPDATED, basketModel.getState());
+	events.on(AppEvents.BASKET_CLEAR, () => {
+		basketModel.basketClear();
+		events.emit(AppEvents.BASKET_UPDATED, basketModel.basketGetState());
 	});
 
 	// Обновление ошибок формы заказа
-	events.on('errors:update', (errors: Record<string, string>) => {
+	events.on(AppEvents.ERRORS_UPDATE, (errors: Record<string, string>) => {
 		orderFormView.updateErrors(errors);
 	});
 
 	// Обновление ошибок формы контактов
-	events.on('contacts:errors:update', (errors: Record<string, string>) => {
+	events.on(AppEvents.CONTACTS_ERRORS_UPDATE, (errors: Record<string, string>) => {
 		contactsFormView.updateErrors(errors);
 	});
 
 	// Открытие формы заказа
-	events.on('order:open', () => {
+	events.on(AppEvents.ORDER_OPEN, () => {
 		openOrderModal();
 	});
 
 	// Отправка формы заказа
-	events.on('order:submit', () => {
+	events.on(AppEvents.ORDER_SUBMIT, () => {
 		openContactsModal();
 	});
 
 	// Отправка формы контактов
-	events.on('contacts:submit', () => {
+	events.on(AppEvents.CONTACTS_SUBMIT, () => {
 		submitOrder();
 	});
 
 	// Закрытие окна успеха
-	events.on('success:close', () => {
+	events.on(AppEvents.SUCCESS_CLOSE, () => {
 		modal.close();
-		basketModel.clear();
+		basketModel.basketClear();
 		orderModel.clear();
-		events.emit(AppEvents.BASKET_UPDATED, basketModel.getState());
+		events.emit(AppEvents.BASKET_UPDATED, basketModel.basketGetState());
 	});
 }
 
@@ -182,7 +182,7 @@ function renderProducts(products: IProduct[]): void {
 
 // ===== ОБНОВЛЕНИЕ ПРЕДСТАВЛЕНИЯ КОРЗИНЫ =====
 function updateBasketView(): void {
-	const basketState = basketModel.getState();
+	const basketState = basketModel.basketGetState();
 
 	// Создаем элементы корзины
 	const basketItems = basketState.items.map((item, index) => {
@@ -208,9 +208,7 @@ function updateBasketView(): void {
 		titleElement.textContent = item.product.title;
 		const itemTotal = basketModel.basketGetItemTotal(item);
 		priceElement.textContent =
-			itemTotal !== null
-				? `${itemTotal} синапсов`
-				: 'Бесценно';
+			itemTotal !== null ? `${itemTotal} синапсов` : 'Бесценно';
 		indexElement.textContent = (index + 1).toString();
 
 		// Обработчик удаления
@@ -232,7 +230,7 @@ function updateBasketView(): void {
 // ===== ОТКРЫТИЕ МОДАЛЬНОГО ОКНА ТОВАРА =====
 function openProductModal(product: IProduct): void {
 	const previewElement = cloneTemplate<HTMLElement>('card-preview');
-	const isInBasket = basketModel.isProductInBasket(product.id);
+	const isInBasket = basketModel.basketIsProductInBasket(product.id);
 
 	const preview = new CardPreviewView(previewElement);
 	preview.render(product);
@@ -266,7 +264,7 @@ function openProductModal(product: IProduct): void {
 // ===== ОТКРЫТИЕ МОДАЛЬНОГО ОКНА КОРЗИНЫ =====
 function openBasketModal(): void {
 	updateBasketView();
-	modal.render({ content: basketView.container });
+	modal.render({ content: basketView.basketContainer });
 }
 
 // ===== ОТКРЫТИЕ МОДАЛЬНОГО ОКНА ЗАКАЗА =====
@@ -293,7 +291,7 @@ function openContactsModal(): void {
 // ===== ОТПРАВКА ЗАКАЗА =====
 async function submitOrder(): Promise<void> {
 	try {
-		const basketState = basketModel.getState();
+		const basketState = basketModel.basketGetState();
 
 		if (!orderModel.isContactsValid()) {
 			alert('Пожалуйста, заполните правильно все поля контактов');
