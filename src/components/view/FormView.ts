@@ -1,4 +1,4 @@
-import { IFormValidation } from '../../types';
+import { IFormValidation, IFormErrors, AppEvents } from '../../types';
 import { ensureAllElements, ensureElement } from '../../utils/utils';
 import { CommonView } from './CommonView';
 import { IEvents } from '../base/events';
@@ -26,8 +26,14 @@ export class FormView<T> extends CommonView<IFormValidation> {
 		);
 		this._error = ensureElement<HTMLSpanElement>('.form__errors', container);
 
-		this.container.addEventListener('input', () => {
-			this.emitInput();
+		// Устанавливаем слушатели на все поля ввода
+		this.inputList.forEach(input => {
+			input.addEventListener('input', () => {
+				this.events.emit(AppEvents.ORDER_UPDATE, {
+					field: input.name,
+					value: input.value
+				});
+			});
 		});
 
 		this.container.addEventListener('submit', (evt: Event) => {
@@ -40,12 +46,18 @@ export class FormView<T> extends CommonView<IFormValidation> {
 		this.setDisabled(this._submit, !value);
 	}
 
-	get valid(): boolean {
-		return this.inputList.every((item) => item.value.length > 0);
-	}
-
 	set error(value: string) {
 		this.setText(this._error, value);
+	}
+
+	updateErrors(errors: IFormErrors): void {
+		// Собираем все ошибки в одну строку
+		const errorMessages = Object.values(errors).filter(Boolean);
+		this.error = errorMessages.join('; ');
+		
+		// Управляем состоянием кнопки - кнопка активна, если НЕТ ошибок
+		const hasErrors = errorMessages.length > 0;
+		this.valid = !hasErrors;
 	}
 
 	clear(): void {

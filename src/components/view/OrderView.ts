@@ -1,7 +1,7 @@
 import { ensureAllElements, ensureElement } from '../../utils/utils';
 import { IEvents } from '../base/events';
 import { FormView } from './FormView';
-import { IDeliveryInfo } from '../../types';
+import { IDeliveryInfo, AppEvents } from '../../types';
 
 export class OrderView extends FormView<IDeliveryInfo> {
 	protected buttonContainer: HTMLDivElement;
@@ -26,13 +26,16 @@ export class OrderView extends FormView<IDeliveryInfo> {
 			'address'
 		) as HTMLInputElement;
 
-		this.buttonContainer.addEventListener('click', (evt) => {
-			if (evt.target === this.onlineButton || evt.target === this.cashButton) {
-				const button = evt.target as HTMLButtonElement;
+		// Устанавливаем слушатели на кнопки способа оплаты
+		[this.onlineButton, this.cashButton].forEach(button => {
+			button.addEventListener('click', () => {
 				this.resetButtons();
 				this.toggleClass(button, 'button_alt-active', true);
-				this.emitInput();
-			}
+				this.events.emit(AppEvents.ORDER_UPDATE, {
+					field: 'payment',
+					value: button.name
+				});
+			});
 		});
 	}
 
@@ -46,14 +49,6 @@ export class OrderView extends FormView<IDeliveryInfo> {
 		return result;
 	}
 
-	set valid(value: boolean) {
-		super.valid = value;
-	}
-
-	get valid(): boolean {
-		const isInputValid = super.valid;
-		return isInputValid && this.payment !== '';
-	}
 
 	getActiveButton(): HTMLButtonElement | null {
 		if (this.onlineButton.classList.contains('button_alt-active')) {

@@ -1,4 +1,4 @@
-import { IOrder, IOrderRequest, PaymentMethod, IDeliveryInfo, IContactInfo, IOrderItems, AppEvents } from '../../types';
+import { IOrder, IOrderData, PaymentMethod, IFormErrors, AppEvents } from '../../types';  
 import { CommonModel } from './CommonModel';
 import { IEvents } from '../base/events';
 
@@ -7,8 +7,6 @@ export class OrderModel extends CommonModel<IOrder> implements IOrder {
 	protected _address: string;
 	protected _email: string;
 	protected _phone: string;
-	protected _total: number;
-	protected _items: string[];
 
 	constructor(data: Partial<IOrder>, events: IEvents) {
 		super(data, events);
@@ -46,48 +44,82 @@ export class OrderModel extends CommonModel<IOrder> implements IOrder {
 		return this._phone;
 	}
 
-	set total(value: number) {
-		this._total = value;
+	setData(field: string, value: string): void {
+		switch (field) {
+			case 'payment':
+				this._payment = value as PaymentMethod;
+				break;
+			case 'address':
+				this._address = value;
+				break;
+			case 'email':
+				this._email = value;
+				break;
+			case 'phone':
+				this._phone = value;
+				break;
+		}
+		this.validate();
 	}
 
-	get total(): number {
-		return this._total;
+	validate(): void {
+		const errors: IFormErrors = {};
+		
+		// Валидация способа оплаты
+		if (!this._payment) {
+			errors.payment = 'Выберите способ оплаты';
+		}
+		
+		// Валидация адреса
+		if (!this._address || this._address.trim().length === 0) {
+			errors.address = 'Необходимо указать адрес';
+		}
+		
+		// Валидация email
+		if (!this._email) {
+			errors.email = 'Необходимо указать email';
+		} else {
+			const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+			if (!emailRegex.test(this._email.trim())) {
+				errors.email = 'Некорректный формат email';
+			}
+		}
+		
+		// Валидация телефона
+		if (!this._phone) {
+			errors.phone = 'Необходимо указать телефон';
+		} else {
+			const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
+			if (!phoneRegex.test(this._phone.trim())) {
+				errors.phone = 'Некорректный формат телефона';
+			}
+		}
+		
+		this.events.emit(AppEvents.ERRORS_UPDATE, errors);
 	}
 
-	set items(list: string[]) {
-		this._items = list;
+	validateDelivery(): boolean {
+		return Boolean(this._payment && this._address && this._address.trim().length > 0);
 	}
 
-	get items(): string[] {
-		return this._items;
+	validateContacts(): boolean {
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
+		
+		return Boolean(
+			this._email && 
+			this._phone && 
+			emailRegex.test(this._email.trim()) && 
+			phoneRegex.test(this._phone.trim())
+		);
 	}
 
-	setDelivery(delivery: IDeliveryInfo): void {
-		this.payment = delivery.payment;
-		this.address = delivery.address;
-		this.emitChanges(AppEvents.ORDER_DELIVERY_CHANGED);
-	}
-
-	setContacts(contacts: IContactInfo): void {
-		this.email = contacts.email;
-		this.phone = contacts.phone;
-		this.emitChanges(AppEvents.ORDER_CONTACTS_CHANGED);
-	}
-
-	setOrderItems(orderItems: IOrderItems): void {
-		this.total = orderItems.total;
-		this.items = orderItems.items;
-		this.emitChanges(AppEvents.ORDER_ITEMS_CHANGED);
-	}
-
-	readyОrder(): IOrderRequest {
+	getOrderData(): IOrderData {
 		return {
 			payment: this._payment,
 			email: this._email,
 			phone: this._phone,
 			address: this._address,
-			total: this._total,
-			items: this._items,
 		};
 	}
 }

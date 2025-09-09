@@ -56,7 +56,16 @@ export interface IFormValidation {
 	valid: boolean;
 }
 
-export interface IForm extends IFormValidation {
+export interface IFormErrors {
+	[key: string]: string;
+}
+
+export interface IOrderUpdate {
+	field: string;
+	value: string;
+}
+
+export interface IForm {
 	render(data?: IFormValidation): HTMLElement;
 }
 
@@ -77,19 +86,20 @@ export interface IContactInfo {
 	phone: string;
 }
 
-export type IOrderRequest = IDeliveryInfo & IContactInfo & IOrderItems;
+export type IOrderData = IDeliveryInfo & IContactInfo;
 
-
-export interface IOrderItems {
+export type IOrderRequest = IOrderData & {
 	total: number;
 	items: string[];
-}
+};
 
-export interface IOrder extends IOrderRequest {
-	readyОrder(): IOrderRequest;
-	setDelivery(delivery: IDeliveryInfo): void;
-	setContacts(contacts: IContactInfo): void;
-	setOrderItems(orderItems: IOrderItems): void;
+
+export interface IOrder {
+	getOrderData(): IOrderData;
+	setData(field: string, value: string): void;
+	validate(): void;
+	validateDelivery(): boolean;
+	validateContacts(): boolean;
 }
 
 export interface IOrderResponse {
@@ -114,13 +124,14 @@ export enum AppEvents {
 	
 	// Оформление заказа
 	ORDER_START = 'order:open',
-	ORDER_DELIVERY_INPUT = 'order:input',
+	ORDER_UPDATE = 'order:update',
 	ORDER_DELIVERY_SUBMIT = 'order:submit',
 	ORDER_DELIVERY_CHANGED = 'order:delivery-changed',
-	ORDER_CONTACTS_INPUT = 'contacts:input',
 	ORDER_CONTACTS_SUBMIT = 'contacts:submit',
 	ORDER_CONTACTS_CHANGED = 'order:contacts-changed',
-	ORDER_ITEMS_CHANGED = 'order:items-changed',
+	
+	// Обработка ошибок
+	ERRORS_UPDATE = 'errors:update',
 	
 	// Завершение заказа
 	ORDER_SUCCESS_CLOSE = 'success:submit',

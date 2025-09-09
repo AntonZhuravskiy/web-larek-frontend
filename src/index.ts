@@ -4,13 +4,14 @@ import { CDN_URL, API_URL } from './utils/constants';
 import {
 	IContactInfo,
 	IDeliveryInfo,
-	IForm,
 	IFormValidation,
-	IOrderItems,
+	IFormErrors,
 	IOrderResponse,
 	IProduct,
 	ProductCard,
 	IOrderRequest,
+	IOrderData,
+	IOrderUpdate,
 	ProductId,
 	PaymentMethod,
 	AppEvents,
@@ -74,11 +75,30 @@ const orderView = new OrderView(cloneTemplate(orderTemplate), events);
 const contactsForm = new ContactsView(cloneTemplate(contactsTemplate), events);
 const successOrder = new SuccessView(cloneTemplate(successTemplate), events);
 
-// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
-function validate(form: IForm) {
-	const validity: IFormValidation = { valid: form.valid };
-	form.render(validity);
-}
+// === ОБРАБОТЧИКИ СОБЫТИЙ ДЛЯ НОВОЙ АРХИТЕКТУРЫ ===
+
+// Обновление данных заказа
+events.on(AppEvents.ORDER_UPDATE, (data: IOrderUpdate) => {
+	order.setData(data.field, data.value);
+});
+
+// Обработка ошибок валидации
+events.on(AppEvents.ERRORS_UPDATE, (errors: IFormErrors) => {
+	// Определяем, какие ошибки относятся к форме доставки
+	const deliveryErrors: IFormErrors = {};
+	if (errors.payment) deliveryErrors.payment = errors.payment;
+	if (errors.address) deliveryErrors.address = errors.address;
+	
+	// Определяем, какие ошибки относятся к форме контактов
+	const contactsErrors: IFormErrors = {};
+	if (errors.email) contactsErrors.email = errors.email;
+	if (errors.phone) contactsErrors.phone = errors.phone;
+	
+	// Обновляем соответствующие формы
+	// Всегда обновляем формы, даже если ошибок нет (для активации кнопок)
+	orderView.updateErrors(deliveryErrors);
+	contactsForm.updateErrors(contactsErrors);
+});
 
 // === ОБРАБОТЧИКИ СОБЫТИЙ ===
 
@@ -95,17 +115,20 @@ events.on(AppEvents.CATALOG_CHANGED, (data: IProduct[]) => {
 });
 
 events.on(AppEvents.PRODUCT_SELECT, (data: ProductId) => {
-	!modalContainer.classList.contains('modal_active')
-		? modal.open()
-		: modal.close();
-
-	const product = catalog.getId(data.id);
-	if (product) {
-		const previewData = Object.assign(product, {
-			valid: Boolean(product.price),
-			state: !basket.check(data.id),
-		});
-		modal.render({ content: productPreview.render(previewData) });
+	// Если модальное окно закрыто, открываем его, иначе закрываем
+	if (!modal.isOpen()) {
+		modal.open();
+		
+		const product = catalog.getId(data.id);
+		if (product) {
+			const previewData = Object.assign(product, {
+				valid: Boolean(product.price),
+				state: !basket.check(data.id),
+			});
+			modal.render({ content: productPreview.render(previewData) });
+		}
+	} else {
+		modal.close();
 	}
 });
 
@@ -145,48 +168,37 @@ events.on(AppEvents.BASKET_CHANGED, (data: ProductId) => {
 
 // Заказ - информация о доставке
 events.on(AppEvents.ORDER_START, () => {
-	const orderList: IOrderItems = {
-		total: basket.total,
-		items: basket.getIdList(),
-	};
-	order.setOrderItems(orderList);
-
+	// Запускаем валидацию при открытии формы
+	order.validate();
+	
 	modal.render({
 		content: orderView.render({
-			valid: orderView.valid,
+			valid: order.validateDelivery(),
 		}),
 	});
-});
-
-events.on(AppEvents.ORDER_DELIVERY_INPUT, () => {
-	validate(orderView);
-	const deliveryData: IDeliveryInfo = {
-		payment: orderView.payment as PaymentMethod,
-		address: orderView.address,
-	};
-	order.setDelivery(deliveryData);
 });
 
 events.on(AppEvents.ORDER_DELIVERY_SUBMIT, () => {
 	modal.render({
 		content: contactsForm.render({
-			valid: contactsForm.valid,
+			valid: order.validateContacts(),
 		}),
 	});
 });
 
-// Заказ - контактная информация
-events.on(AppEvents.ORDER_CONTACTS_INPUT, () => {
-	validate(contactsForm);
-	const contactsData: IContactInfo = {
-		email: contactsForm.email,
-		phone: contactsForm.phone,
-	};
-	order.setContacts(contactsData);
-});
-
 events.on(AppEvents.ORDER_CONTACTS_SUBMIT, () => {
-	const apiObj: IOrderRequest = order.readyОrder();
+	// Собираем полный заказ из данных двух моделей
+	const orderData = order.getOrderData(); // Данные доставки и контактов
+	const basketData = {
+		total: basket.total,
+		items: basket.getIdList(),
+	}; // Данные корзины
+	
+	const apiObj: IOrderRequest = {
+		...orderData,
+		...basketData,
+	};
+	
 	api
 		.createOrder(apiObj)
 		.then((data: IOrderResponse) => {

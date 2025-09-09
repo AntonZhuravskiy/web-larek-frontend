@@ -43,4 +43,8 @@ export class ModalView extends CommonView<IModalView> {
 		this.toggleClass(this.container, 'modal_active', false);
 		this.events.emit(AppEvents.MODAL_CLOSE);
 	}
+
+	isOpen(): boolean {
+		return this.container.classList.contains('modal_active');
+	}
 }
