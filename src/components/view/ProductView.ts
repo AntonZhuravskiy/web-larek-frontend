@@ -18,7 +18,7 @@ export class ProductView extends CatalogView<ProductPreviewData> {
 		this.button = ensureElement<HTMLButtonElement>('.card__button', container);
 
 		this.button.addEventListener('click', () => {
-			this.events.emit(AppEvents.BASKET_ADD_ITEM, { id: this.id });
+			this.events.emit(AppEvents.BASKET_ADD_ITEM, this.id);
 		});
 	}
 
@@ -26,17 +26,13 @@ export class ProductView extends CatalogView<ProductPreviewData> {
 		this.setText(this._description, value);
 	}
 
-	set valid(state: boolean) {
+
+	set state(state: boolean) {
 		this.setDisabled(this.button, !state);
 	}
 
-	get valid(): boolean {
-		return !this.button.disabled;
-	}
-
-	set state(state: boolean) {
-		if (this.valid) {
-			this.setDisabled(this.button, !state);
-		}
+	updateButton(text: string, disabled: boolean): void {
+		this.setText(this.button, text);
+		this.setDisabled(this.button, disabled);
 	}
 }

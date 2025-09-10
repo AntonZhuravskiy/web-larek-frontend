@@ -115,12 +115,14 @@ export enum AppEvents {
 	// Каталог и товары
 	CATALOG_CHANGED = 'catalog:items-changed',
 	PRODUCT_SELECT = 'card:select',
+	PRODUCT_VALIDATION = 'product:validation',
 	
 	// Корзина
 	BASKET_OPEN = 'basket:open',
 	BASKET_ADD_ITEM = 'basket:add',
 	BASKET_REMOVE_ITEM = 'basket:remove',
 	BASKET_CHANGED = 'basket:items-changed',
+	BASKET_VALIDATION = 'basket:validation',
 	
 	// Оформление заказа
 	ORDER_START = 'order:open',

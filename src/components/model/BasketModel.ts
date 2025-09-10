@@ -28,12 +28,14 @@ export class BasketModel extends CommonModel<IProductList> {
 		const product = this._items.find((product) => product.id === item.id);
 		if (!product) {
 			this._items.push(item);
+			this.validate();
 			this.emitChanges(AppEvents.BASKET_CHANGED, { id: item.id });
 		}
 	}
 
 	remove(id: string): void {
 		this._items = this._items.filter((item) => item.id !== id);
+		this.validate();
 		this.emitChanges(AppEvents.BASKET_CHANGED, { id: id });
 	}
 
@@ -44,10 +46,23 @@ export class BasketModel extends CommonModel<IProductList> {
 
 	clear(): void {
 		this._items = [];
+		this.validate();
 		this.emitChanges(AppEvents.BASKET_CHANGED);
 	}
 
 	getIdList(): string[] {
 		return this._items.map((item) => item.id);
+	}
+
+	validate(): void {
+		// Корзина валидна для оформления заказа, если в ней есть товары
+		const valid = this._items.length > 0;
+		
+		this.events.emit(AppEvents.BASKET_VALIDATION, {
+			valid,
+			isEmpty: this._items.length === 0,
+			total: this.total,
+			count: this._items.length
+		});
 	}
 }

@@ -26,18 +26,21 @@ export class BasketView extends CommonView<IBasketView> {
 		this.events = events;
 
 		this.button.addEventListener('click', () => this.events.emit(AppEvents.ORDER_START));
+
 	}
 
 	set price(value: number) {
 		this.setText(this._price, `${value} синапсов`);
 	}
 
-	set valid(state: boolean) {
-		this.setDisabled(this.button, state);
-	}
 
 	set list(items: HTMLElement[]) {
 		this._list.replaceChildren(...items);
+	}
+
+	updateButton(disabled: boolean): void {
+		// Только отрисовка - никакой логики
+		this.setDisabled(this.button, disabled);
 	}
 }
 

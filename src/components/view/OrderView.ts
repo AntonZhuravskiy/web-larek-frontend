@@ -37,6 +37,7 @@ export class OrderView extends FormView<IDeliveryInfo> {
 				});
 			});
 		});
+
 	}
 
 	get address(): string {

@@ -122,4 +122,52 @@ export class OrderModel extends CommonModel<IOrder> implements IOrder {
 			address: this._address,
 		};
 	}
+
+	// Получить ошибки доставки для OrderView
+	getDeliveryErrors(): { errorText: string; hasErrors: boolean } {
+		const errors: IFormErrors = {};
+		
+		if (!this._payment) {
+			errors.payment = 'Выберите способ оплаты';
+		}
+		
+		if (!this._address || this._address.trim().length === 0) {
+			errors.address = 'Необходимо указать адрес';
+		}
+		
+		const errorMessages = Object.values(errors).filter(Boolean);
+		return {
+			errorText: errorMessages.join('; '),
+			hasErrors: errorMessages.length > 0
+		};
+	}
+
+	// Получить ошибки контактов для ContactsView
+	getContactsErrors(): { errorText: string; hasErrors: boolean } {
+		const errors: IFormErrors = {};
+		
+		if (!this._email) {
+			errors.email = 'Необходимо указать email';
+		} else {
+			const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+			if (!emailRegex.test(this._email.trim())) {
+				errors.email = 'Некорректный формат email';
+			}
+		}
+		
+		if (!this._phone) {
+			errors.phone = 'Необходимо указать телефон';
+		} else {
+			const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
+			if (!phoneRegex.test(this._phone.trim())) {
+				errors.phone = 'Некорректный формат телефона';
+			}
+		}
+		
+		const errorMessages = Object.values(errors).filter(Boolean);
+		return {
+			errorText: errorMessages.join('; '),
+			hasErrors: errorMessages.length > 0
+		};
+	}
 }

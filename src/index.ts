@@ -23,6 +23,7 @@ import { EventEmitter } from './components/base/events';
 import { CatalogModel } from './components/model/CatalogModel';
 import { BasketModel } from './components/model/BasketModel';
 import { OrderModel } from './components/model/OrderModel';
+import { ProductModel } from './components/model/ProductModel';
 
 // Импорт представлений
 import { Page } from './components/view/Page';
@@ -82,22 +83,40 @@ events.on(AppEvents.ORDER_UPDATE, (data: IOrderUpdate) => {
 	order.setData(data.field, data.value);
 });
 
-// Обработка ошибок валидации
+// Обработка ошибок валидации - Presenter обрабатывает и передает в View
 events.on(AppEvents.ERRORS_UPDATE, (errors: IFormErrors) => {
-	// Определяем, какие ошибки относятся к форме доставки
-	const deliveryErrors: IFormErrors = {};
-	if (errors.payment) deliveryErrors.payment = errors.payment;
-	if (errors.address) deliveryErrors.address = errors.address;
+	// Получаем обработанные ошибки из модели для каждой формы
+	const deliveryErrors = order.getDeliveryErrors();
+	const contactsErrors = order.getContactsErrors();
 	
-	// Определяем, какие ошибки относятся к форме контактов
-	const contactsErrors: IFormErrors = {};
-	if (errors.email) contactsErrors.email = errors.email;
-	if (errors.phone) contactsErrors.phone = errors.phone;
-	
-	// Обновляем соответствующие формы
-	// Всегда обновляем формы, даже если ошибок нет (для активации кнопок)
-	orderView.updateErrors(deliveryErrors);
-	contactsForm.updateErrors(contactsErrors);
+	// Передаем готовые данные в View для отрисовки
+	orderView.updateErrors(deliveryErrors.errorText, deliveryErrors.hasErrors);
+	contactsForm.updateErrors(contactsErrors.errorText, contactsErrors.hasErrors);
+});
+
+// Обработка валидации продуктов - Presenter принимает решения об отображении
+events.on(AppEvents.PRODUCT_VALIDATION, (data: any) => {
+	// Находим соответствующий ProductView и обновляем его
+	if (productPreview.id?.id === data.id) {
+		// Создаем модель для получения правильного текста и состояния
+		const product = catalog.getId(data.id);
+		if (product) {
+			const productModel = new ProductModel(product, events);
+			productModel.inBasket = basket.check(data.id);
+			
+			// Получаем данные отображения из модели и передаем в View
+			const buttonText = productModel.getButtonText();
+			const isDisabled = productModel.isButtonDisabled();
+			
+			productPreview.updateButton(buttonText, isDisabled);
+		}
+	}
+});
+
+// Обработка валидации корзины - Presenter управляет состоянием кнопки
+events.on(AppEvents.BASKET_VALIDATION, (data: any) => {
+	// Presenter принимает решение о состоянии кнопки корзины
+	basketView.updateButton(data.isEmpty);
 });
 
 // === ОБРАБОТЧИКИ СОБЫТИЙ ===
@@ -121,11 +140,24 @@ events.on(AppEvents.PRODUCT_SELECT, (data: ProductId) => {
 		
 		const product = catalog.getId(data.id);
 		if (product) {
+			// Создаем модель продукта для получения логики отображения
+			const productModel = new ProductModel(product, events);
+			productModel.inBasket = basket.check(data.id);
+			
+			// Данные для отображения берем из модели
 			const previewData = Object.assign(product, {
 				valid: Boolean(product.price),
 				state: !basket.check(data.id),
 			});
+			
+			// Устанавливаем id для ProductView
+			productPreview.id = { id: product.id };
 			modal.render({ content: productPreview.render(previewData) });
+			
+			// Presenter управляет отображением кнопки на основе логики модели
+			const buttonText = productModel.getButtonText();
+			const isDisabled = productModel.isButtonDisabled();
+			productPreview.updateButton(buttonText, isDisabled);
 		}
 	} else {
 		modal.close();
@@ -138,18 +170,42 @@ events.on(AppEvents.BASKET_OPEN, () => {
 	modal.render({
 		content: basketView.render({
 			price: basket.total,
-			valid: basket.length === 0,
 		}),
 	});
+	
+	// Presenter управляет состоянием кнопки при открытии корзины
+	const isEmpty = basket.length === 0;
+	basketView.updateButton(isEmpty);
 });
 
 events.on(AppEvents.BASKET_ADD_ITEM, (data: ProductId) => {
 	const product = catalog.getId(data.id);
 	basket.add(product);
+	
+	// Presenter обновляет отображение ProductView если он открыт
+	if (productPreview.id?.id === data.id) {
+		const productModel = new ProductModel(product, events);
+		productModel.inBasket = true;
+		
+		const buttonText = productModel.getButtonText();
+		const isDisabled = productModel.isButtonDisabled();
+		productPreview.updateButton(buttonText, isDisabled);
+	}
 });
 
 events.on(AppEvents.BASKET_REMOVE_ITEM, (data: ProductId) => {
+	const product = catalog.getId(data.id);
 	basket.remove(data.id);
+	
+	// Presenter обновляет отображение ProductView если он открыт
+	if (product && productPreview.id?.id === data.id) {
+		const productModel = new ProductModel(product, events);
+		productModel.inBasket = false;
+		
+		const buttonText = productModel.getButtonText();
+		const isDisabled = productModel.isButtonDisabled();
+		productPreview.updateButton(buttonText, isDisabled);
+	}
 });
 
 events.on(AppEvents.BASKET_CHANGED, (data: ProductId) => {
@@ -161,9 +217,12 @@ events.on(AppEvents.BASKET_CHANGED, (data: ProductId) => {
 	});
 	basketView.render({
 		list: cardList,
-		valid: basket.length === 0,
 		price: basket.total,
 	});
+	
+	// Presenter управляет состоянием кнопки корзины на основе логики
+	const isEmpty = basket.length === 0;
+	basketView.updateButton(isEmpty);
 });
 
 // Заказ - информация о доставке
@@ -172,17 +231,13 @@ events.on(AppEvents.ORDER_START, () => {
 	order.validate();
 	
 	modal.render({
-		content: orderView.render({
-			valid: order.validateDelivery(),
-		}),
+		content: orderView.render(),
 	});
 });
 
 events.on(AppEvents.ORDER_DELIVERY_SUBMIT, () => {
 	modal.render({
-		content: contactsForm.render({
-			valid: order.validateContacts(),
-		}),
+		content: contactsForm.render(),
 	});
 });
 

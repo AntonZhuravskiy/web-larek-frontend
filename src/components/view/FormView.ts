@@ -27,11 +27,11 @@ export class FormView<T> extends CommonView<IFormValidation> {
 		this._error = ensureElement<HTMLSpanElement>('.form__errors', container);
 
 		// Устанавливаем слушатели на все поля ввода
-		this.inputList.forEach(input => {
+		this.inputList.forEach((input) => {
 			input.addEventListener('input', () => {
 				this.events.emit(AppEvents.ORDER_UPDATE, {
 					field: input.name,
-					value: input.value
+					value: input.value,
 				});
 			});
 		});
@@ -42,22 +42,14 @@ export class FormView<T> extends CommonView<IFormValidation> {
 		});
 	}
 
-	set valid(value: boolean) {
-		this.setDisabled(this._submit, !value);
-	}
-
 	set error(value: string) {
 		this.setText(this._error, value);
 	}
 
-	updateErrors(errors: IFormErrors): void {
-		// Собираем все ошибки в одну строку
-		const errorMessages = Object.values(errors).filter(Boolean);
-		this.error = errorMessages.join('; ');
-		
-		// Управляем состоянием кнопки - кнопка активна, если НЕТ ошибок
-		const hasErrors = errorMessages.length > 0;
-		this.valid = !hasErrors;
+	updateErrors(errorText: string, hasErrors: boolean): void {
+		// Только отрисовка - никакой логики
+		this.error = errorText;
+		this.setDisabled(this._submit, hasErrors);
 	}
 
 	clear(): void {
@@ -69,8 +61,11 @@ export class FormView<T> extends CommonView<IFormValidation> {
 	}
 
 	render(data?: Partial<T> & IFormValidation): HTMLElement {
-		const { valid, ...inputs } = data;
-		super.render({ valid });
+		const { valid, ...inputs } = data || {};
+		// Если передан параметр valid, устанавливаем состояние кнопки
+		if (typeof valid === 'boolean') {
+			this.setDisabled(this._submit, !valid);
+		}
 		Object.assign(this, inputs);
 		return this.container;
 	}
