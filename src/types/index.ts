@@ -28,14 +28,10 @@ export type ProductId = Pick<IProduct, 'id'>;
 
 export type ProductCard = Omit<IProduct, 'description'>;
 
-export type ProductPreviewData = IProduct & {
-	valid: boolean;
-	state: boolean;
-};
+export type ProductPreviewData = IProduct;
 
 export interface IBasketView {
 	list: HTMLElement[];
-	valid: boolean;
 	price: number;
 }
 
@@ -60,10 +56,7 @@ export interface IFormErrors {
 	[key: string]: string;
 }
 
-export interface IOrderUpdate {
-	field: string;
-	value: string;
-}
+
 
 export interface IForm {
 	render(data?: IFormValidation): HTMLElement;
@@ -115,14 +108,12 @@ export enum AppEvents {
 	// Каталог и товары
 	CATALOG_CHANGED = 'catalog:items-changed',
 	PRODUCT_SELECT = 'card:select',
-	PRODUCT_VALIDATION = 'product:validation',
 	
 	// Корзина
 	BASKET_OPEN = 'basket:open',
 	BASKET_ADD_ITEM = 'basket:add',
 	BASKET_REMOVE_ITEM = 'basket:remove',
 	BASKET_CHANGED = 'basket:items-changed',
-	BASKET_VALIDATION = 'basket:validation',
 	
 	// Оформление заказа
 	ORDER_START = 'order:open',

@@ -1,19 +1,14 @@
+
 import './scss/styles.scss';
 import { cloneTemplate, ensureElement } from './utils/utils';
 import { CDN_URL, API_URL } from './utils/constants';
 import {
-	IContactInfo,
-	IDeliveryInfo,
-	IFormValidation,
 	IFormErrors,
 	IOrderResponse,
 	IProduct,
 	ProductCard,
 	IOrderRequest,
-	IOrderData,
-	IOrderUpdate,
 	ProductId,
-	PaymentMethod,
 	AppEvents,
 } from './types';
 import { ApiClient } from './components/base/apiClient';
@@ -23,7 +18,6 @@ import { EventEmitter } from './components/base/events';
 import { CatalogModel } from './components/model/CatalogModel';
 import { BasketModel } from './components/model/BasketModel';
 import { OrderModel } from './components/model/OrderModel';
-import { ProductModel } from './components/model/ProductModel';
 
 // Импорт представлений
 import { Page } from './components/view/Page';
@@ -79,44 +73,26 @@ const successOrder = new SuccessView(cloneTemplate(successTemplate), events);
 // === ОБРАБОТЧИКИ СОБЫТИЙ ДЛЯ НОВОЙ АРХИТЕКТУРЫ ===
 
 // Обновление данных заказа
-events.on(AppEvents.ORDER_UPDATE, (data: IOrderUpdate) => {
-	order.setData(data.field, data.value);
+events.on(AppEvents.ORDER_UPDATE, ({ key, value }: { key: string, value: string }) => {
+	order.setData(key, value);
 });
 
-// Обработка ошибок валидации - Presenter обрабатывает и передает в View
+// Обработка ошибок валидации
 events.on(AppEvents.ERRORS_UPDATE, (errors: IFormErrors) => {
-	// Получаем обработанные ошибки из модели для каждой формы
-	const deliveryErrors = order.getDeliveryErrors();
-	const contactsErrors = order.getContactsErrors();
+	// Определяем, какие ошибки относятся к форме доставки
+	const deliveryErrors: IFormErrors = {};
+	if (errors.payment) deliveryErrors.payment = errors.payment;
+	if (errors.address) deliveryErrors.address = errors.address;
 	
-	// Передаем готовые данные в View для отрисовки
-	orderView.updateErrors(deliveryErrors.errorText, deliveryErrors.hasErrors);
-	contactsForm.updateErrors(contactsErrors.errorText, contactsErrors.hasErrors);
-});
-
-// Обработка валидации продуктов - Presenter принимает решения об отображении
-events.on(AppEvents.PRODUCT_VALIDATION, (data: any) => {
-	// Находим соответствующий ProductView и обновляем его
-	if (productPreview.id?.id === data.id) {
-		// Создаем модель для получения правильного текста и состояния
-		const product = catalog.getId(data.id);
-		if (product) {
-			const productModel = new ProductModel(product, events);
-			productModel.inBasket = basket.check(data.id);
-			
-			// Получаем данные отображения из модели и передаем в View
-			const buttonText = productModel.getButtonText();
-			const isDisabled = productModel.isButtonDisabled();
-			
-			productPreview.updateButton(buttonText, isDisabled);
-		}
-	}
-});
-
-// Обработка валидации корзины - Presenter управляет состоянием кнопки
-events.on(AppEvents.BASKET_VALIDATION, (data: any) => {
-	// Presenter принимает решение о состоянии кнопки корзины
-	basketView.updateButton(data.isEmpty);
+	// Определяем, какие ошибки относятся к форме контактов
+	const contactsErrors: IFormErrors = {};
+	if (errors.email) contactsErrors.email = errors.email;
+	if (errors.phone) contactsErrors.phone = errors.phone;
+	
+	// Обновляем соответствующие формы
+	// Всегда обновляем формы, даже если ошибок нет (для активации кнопок)
+	orderView.updateErrors(deliveryErrors);
+	contactsForm.updateErrors(contactsErrors);
 });
 
 // === ОБРАБОТЧИКИ СОБЫТИЙ ===
@@ -134,33 +110,16 @@ events.on(AppEvents.CATALOG_CHANGED, (data: IProduct[]) => {
 });
 
 events.on(AppEvents.PRODUCT_SELECT, (data: ProductId) => {
-	// Если модальное окно закрыто, открываем его, иначе закрываем
-	if (!modal.isOpen()) {
+	// Всегда показываем выбранный товар в модальном окне
+	const product = catalog.getId(data.id);
+	if (product) {
+		// Рендерим продукт с данными из модели
 		modal.open();
+		modal.render({ content: productPreview.render(product) });
 		
-		const product = catalog.getId(data.id);
-		if (product) {
-			// Создаем модель продукта для получения логики отображения
-			const productModel = new ProductModel(product, events);
-			productModel.inBasket = basket.check(data.id);
-			
-			// Данные для отображения берем из модели
-			const previewData = Object.assign(product, {
-				valid: Boolean(product.price),
-				state: !basket.check(data.id),
-			});
-			
-			// Устанавливаем id для ProductView
-			productPreview.id = { id: product.id };
-			modal.render({ content: productPreview.render(previewData) });
-			
-			// Presenter управляет отображением кнопки на основе логики модели
-			const buttonText = productModel.getButtonText();
-			const isDisabled = productModel.isButtonDisabled();
-			productPreview.updateButton(buttonText, isDisabled);
-		}
-	} else {
-		modal.close();
+		// Обновляем состояние кнопки на основе данных из моделей
+		productPreview.setButtonEnabled(Boolean(product.price));
+		productPreview.setButtonState(!basket.check(data.id));
 	}
 });
 
@@ -172,40 +131,17 @@ events.on(AppEvents.BASKET_OPEN, () => {
 			price: basket.total,
 		}),
 	});
-	
-	// Presenter управляет состоянием кнопки при открытии корзины
-	const isEmpty = basket.length === 0;
-	basketView.updateButton(isEmpty);
+	// Управляем состоянием кнопки на основе данных из модели
+	basketView.setButtonState(basket.length === 0);
 });
 
 events.on(AppEvents.BASKET_ADD_ITEM, (data: ProductId) => {
 	const product = catalog.getId(data.id);
 	basket.add(product);
-	
-	// Presenter обновляет отображение ProductView если он открыт
-	if (productPreview.id?.id === data.id) {
-		const productModel = new ProductModel(product, events);
-		productModel.inBasket = true;
-		
-		const buttonText = productModel.getButtonText();
-		const isDisabled = productModel.isButtonDisabled();
-		productPreview.updateButton(buttonText, isDisabled);
-	}
 });
 
 events.on(AppEvents.BASKET_REMOVE_ITEM, (data: ProductId) => {
-	const product = catalog.getId(data.id);
 	basket.remove(data.id);
-	
-	// Presenter обновляет отображение ProductView если он открыт
-	if (product && productPreview.id?.id === data.id) {
-		const productModel = new ProductModel(product, events);
-		productModel.inBasket = false;
-		
-		const buttonText = productModel.getButtonText();
-		const isDisabled = productModel.isButtonDisabled();
-		productPreview.updateButton(buttonText, isDisabled);
-	}
 });
 
 events.on(AppEvents.BASKET_CHANGED, (data: ProductId) => {
@@ -219,15 +155,13 @@ events.on(AppEvents.BASKET_CHANGED, (data: ProductId) => {
 		list: cardList,
 		price: basket.total,
 	});
-	
-	// Presenter управляет состоянием кнопки корзины на основе логики
-	const isEmpty = basket.length === 0;
-	basketView.updateButton(isEmpty);
+	// Управляем состоянием кнопки на основе данных из модели
+	basketView.setButtonState(basket.length === 0);
 });
 
 // Заказ - информация о доставке
 events.on(AppEvents.ORDER_START, () => {
-	// Запускаем валидацию при открытии формы
+	// Запускаем валидацию при открытии формы - она сама обновит представление через события
 	order.validate();
 	
 	modal.render({
@@ -236,6 +170,7 @@ events.on(AppEvents.ORDER_START, () => {
 });
 
 events.on(AppEvents.ORDER_DELIVERY_SUBMIT, () => {
+	// Валидация произойдет автоматически при обновлении данных
 	modal.render({
 		content: contactsForm.render(),
 	});

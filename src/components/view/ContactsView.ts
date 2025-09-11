@@ -1,4 +1,4 @@
-import { AppEvents, IContactInfo } from '../../types';
+import { IContactInfo } from '../../types';
 import { IEvents } from '../base/events';
 import { FormView } from './FormView';
 
@@ -16,7 +16,6 @@ export class ContactsView extends FormView<IContactInfo> {
 		this.phoneInput = this.container.elements.namedItem(
 			'phone'
 		) as HTMLInputElement;
-
 	}
 
 	get email(): string {

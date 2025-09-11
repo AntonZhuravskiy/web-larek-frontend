@@ -18,7 +18,7 @@ export class ProductView extends CatalogView<ProductPreviewData> {
 		this.button = ensureElement<HTMLButtonElement>('.card__button', container);
 
 		this.button.addEventListener('click', () => {
-			this.events.emit(AppEvents.BASKET_ADD_ITEM, this.id);
+			this.events.emit(AppEvents.BASKET_ADD_ITEM, { id: this.id });
 		});
 	}
 
@@ -26,13 +26,12 @@ export class ProductView extends CatalogView<ProductPreviewData> {
 		this.setText(this._description, value);
 	}
 
-
-	set state(state: boolean) {
-		this.setDisabled(this.button, !state);
+	// Методы только для управления UI состоянием на основе данных из модели
+	setButtonEnabled(enabled: boolean) {
+		this.setDisabled(this.button, !enabled);
 	}
 
-	updateButton(text: string, disabled: boolean): void {
-		this.setText(this.button, text);
-		this.setDisabled(this.button, disabled);
+	setButtonState(available: boolean) {
+		this.setDisabled(this.button, !available);
 	}
 }

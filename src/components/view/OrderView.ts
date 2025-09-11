@@ -5,6 +5,7 @@ import { IDeliveryInfo, AppEvents } from '../../types';
 
 export class OrderView extends FormView<IDeliveryInfo> {
 	protected buttonContainer: HTMLDivElement;
+	protected paymentButtons: HTMLButtonElement[];
 	protected onlineButton: HTMLButtonElement;
 	protected cashButton: HTMLButtonElement;
 	protected addressInput: HTMLInputElement;
@@ -17,27 +18,27 @@ export class OrderView extends FormView<IDeliveryInfo> {
 			container
 		);
 
-		[this.onlineButton, this.cashButton] = ensureAllElements<HTMLButtonElement>(
+		// Ищем коллекции кнопок выбора через querySelectorAll
+		this.paymentButtons = ensureAllElements<HTMLButtonElement>(
 			'.button_alt',
 			container
 		);
+		
+		[this.onlineButton, this.cashButton] = this.paymentButtons;
 
+		// Ищем поля ввода через querySelectorAll (адрес уже найден в FormView)
 		this.addressInput = this.container.elements.namedItem(
 			'address'
 		) as HTMLInputElement;
 
-		// Устанавливаем слушатели на кнопки способа оплаты
-		[this.onlineButton, this.cashButton].forEach(button => {
+		// Проходим по коллекциям циклами и вешаем слушатели на click
+		this.paymentButtons.forEach(button => {
 			button.addEventListener('click', () => {
 				this.resetButtons();
 				this.toggleClass(button, 'button_alt-active', true);
-				this.events.emit(AppEvents.ORDER_UPDATE, {
-					field: 'payment',
-					value: button.name
-				});
+				this.events.emit(AppEvents.ORDER_UPDATE, { key: 'payment', value: button.name });
 			});
 		});
-
 	}
 
 	get address(): string {

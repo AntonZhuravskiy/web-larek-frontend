@@ -15,32 +15,25 @@ export class BasketView extends CommonView<IBasketView> {
 		super(container);
 
 		this._list = ensureElement<HTMLUListElement>('.basket__list', container);
-
-		this.button = ensureElement<HTMLButtonElement>(
-			'.basket__button',
-			container
-		);
-
+		this.button = ensureElement<HTMLButtonElement>('.basket__button', container);
 		this._price = ensureElement<HTMLSpanElement>('.basket__price', container);
-
 		this.events = events;
 
+		// Просто эмитим событие, валидация будет в другом месте
 		this.button.addEventListener('click', () => this.events.emit(AppEvents.ORDER_START));
-
 	}
 
 	set price(value: number) {
 		this.setText(this._price, `${value} синапсов`);
 	}
 
+	// Метод только для обновления состояния кнопки на основе внешней валидации
+	setButtonState(isDisabled: boolean) {
+		this.setDisabled(this.button, isDisabled);
+	}
 
 	set list(items: HTMLElement[]) {
 		this._list.replaceChildren(...items);
-	}
-
-	updateButton(disabled: boolean): void {
-		// Только отрисовка - никакой логики
-		this.setDisabled(this.button, disabled);
 	}
 }
 
@@ -51,13 +44,10 @@ export class BasketCardView extends CardView<BasketProductCard> {
 	constructor(container: HTMLElement, events: IEvents) {
 		super(container, events);
 
-		this._index = ensureElement<HTMLSpanElement>(
-			'.basket__item-index',
-			container
-		);
-
+		this._index = ensureElement<HTMLSpanElement>('.basket__item-index', container);
 		this.button = ensureElement<HTMLButtonElement>('.card__button', container);
 
+		// Просто эмитим событие удаления, обработка в другом месте
 		this.button.addEventListener('click', () =>
 			this.events.emit(AppEvents.BASKET_REMOVE_ITEM, { id: this.id })
 		);
